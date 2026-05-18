@@ -145,12 +145,24 @@ function buildDashboard(
   };
 }
 
+function parseChatMessages(raw: unknown) {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((m) => {
+    const item = m as Record<string, unknown>;
+    return {
+      role: String(item.role ?? ""),
+      text: String(item.text ?? item.content ?? ""),
+    };
+  });
+}
+
 async function fetchUserDetailFromSource(
   sb: NonNullable<ReturnType<typeof getIngestionClient>>,
   userId: string,
   mk: string
 ) {
   const [
+    profileRes,
     commitmentRes,
     stampsRes,
     onboardingRes,
@@ -158,14 +170,16 @@ async function fetchUserDetailFromSource(
     answersRes,
     financialRes,
     gamesRes,
+    gamesListRes,
   ] = await Promise.all([
+    sb.from("profiles").select("ai_memory").eq("id", userId).maybeSingle(),
     sb.from("commitment").select("*").eq("user_id", userId).maybeSingle(),
     sb
       .from("daily_stamps")
       .select("*")
       .eq("user_id", userId)
       .order("stamped_at", { ascending: false })
-      .limit(31),
+      .limit(60),
     sb.from("onboarding_state").select("days_completed").eq("user_id", userId).maybeSingle(),
     sb.from("chat_history").select("messages").eq("user_id", userId).maybeSingle(),
     sb
@@ -178,12 +192,18 @@ async function fetchUserDetailFromSource(
       .from("game_sessions")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId),
+    sb
+      .from("game_sessions")
+      .select("id, game_type, completed_at, duration_ms, score")
+      .eq("user_id", userId)
+      .order("completed_at", { ascending: false })
+      .limit(25),
   ]);
 
   const c = commitmentRes.data as VermillionCommitment | null;
-  const monthStamps = (stampsRes.data ?? []).filter(
-    (s: VermillionDailyStamp) => s.month_key === mk
-  );
+  const chatRaw = (chatRes.data as { messages?: unknown } | null)?.messages;
+  const daysCompleted =
+    (onboardingRes.data as { days_completed?: number[] } | null)?.days_completed ?? [];
 
   return {
     onboarding_answers: answersRes.data ?? [],
@@ -191,15 +211,119 @@ async function fetchUserDetailFromSource(
       (financialRes.data as { data?: Record<string, unknown> } | null)?.data ?? null,
     recent_stamps: (stampsRes.data ?? []) as VermillionDailyStamp[],
     game_sessions_count: gamesRes.count ?? 0,
+    game_sessions: (gamesListRes.data ?? []) as {
+      id: string;
+      game_type?: string;
+      completed_at?: string;
+      duration_ms?: number;
+      score?: number;
+    }[],
     commitment: c,
-    onboardingDays:
-      (onboardingRes.data as { days_completed?: number[] } | null)?.days_completed
-        ?.length ?? 0,
-    chatMessageCount: countChatMessages(
-      (chatRes.data as { messages?: unknown } | null)?.messages
+    onboardingDays: daysCompleted.length,
+    onboarding_days_completed: daysCompleted,
+    chatMessageCount: countChatMessages(chatRaw),
+    chat_messages: parseChatMessages(chatRaw),
+    ai_memory:
+      (profileRes.data as { ai_memory?: { insights?: string[]; sessionCount?: number } } | null)
+        ?.ai_memory ?? null,
+    monthStamps: (stampsRes.data ?? []).filter(
+      (s: VermillionDailyStamp) => s.month_key === mk
     ),
-    monthStamps,
   };
+}
+
+/** רענון משתמש בודד מהמקור → עדכון AppUser מקומי */
+export async function refreshAppUserFromSource(
+  userId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isIngestionSourceConfigured()) {
+    return { ok: false, error: "מקור יניקה לא מוגדר" };
+  }
+  const sb = getIngestionClient();
+  if (!sb) return { ok: false, error: "לא ניתן להתחבר למקור" };
+
+  const mk = monthKey();
+  const profileRes = await sb
+    .from("profiles")
+    .select(
+      "id, email, name, first_name, last_name, phone, date_of_birth, subscription, lang, onboarding_complete, profile_intake_complete, timezone, v_coins, joined_at, updated_at, terms_accepted_at"
+    )
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileRes.error || !profileRes.data) {
+    return { ok: false, error: profileRes.error?.message ?? "משתמש לא נמצא במקור" };
+  }
+
+  const profile = profileRes.data as VermillionProfile;
+  const detail = await fetchUserDetailFromSource(sb, userId, mk);
+  const commitment = detail.commitment;
+
+  const stampByUser = new Map<string, { count: number; score: number; msSum: number; msN: number }>();
+  for (const s of detail.monthStamps ?? []) {
+    const cur = stampByUser.get(userId) ?? { count: 0, score: 0, msSum: 0, msN: 0 };
+    cur.count += 1;
+    cur.score += Number(s.score ?? 0);
+    if (s.ms_diff != null) {
+      cur.msSum += Number(s.ms_diff);
+      cur.msN += 1;
+    }
+    stampByUser.set(userId, cur);
+  }
+  const st = stampByUser.get(userId);
+  const row = buildRows(
+    [profile],
+    commitment ? new Map([[userId, commitment]]) : new Map(),
+    stampByUser,
+    new Map([[userId, detail.onboardingDays]]),
+    new Map([[userId, detail.chatMessageCount]])
+  )[0];
+
+  const syncedAt = new Date();
+  await db.appUser.upsert({
+    where: { externalId: userId },
+    create: {
+      externalId: userId,
+      email: row.email,
+      name: row.name || row.first_name || null,
+      phone: row.phone,
+      subscription: row.subscription,
+      profileJson: JSON.stringify(row),
+      commitmentJson: JSON.stringify(row.commitment),
+      metricsJson: JSON.stringify({
+        stampsThisMonth: row.stampsThisMonth,
+        totalScoreThisMonth: row.totalScoreThisMonth,
+        avgMsDiffThisMonth: row.avgMsDiffThisMonth,
+        onboardingDays: row.onboardingDays,
+        chatMessageCount: row.chatMessageCount,
+        timerDisplay: row.timerDisplay,
+      }),
+      detailJson: JSON.stringify(detail),
+      syncedAt,
+      joinedAt: row.joined_at ? new Date(row.joined_at) : null,
+    },
+    update: {
+      email: row.email,
+      name: row.name || row.first_name || null,
+      phone: row.phone,
+      subscription: row.subscription,
+      profileJson: JSON.stringify(row),
+      commitmentJson: JSON.stringify(row.commitment),
+      metricsJson: JSON.stringify({
+        stampsThisMonth: row.stampsThisMonth,
+        totalScoreThisMonth: row.totalScoreThisMonth,
+        avgMsDiffThisMonth: row.avgMsDiffThisMonth,
+        onboardingDays: row.onboardingDays,
+        chatMessageCount: row.chatMessageCount,
+        timerDisplay: row.timerDisplay,
+      }),
+      detailJson: JSON.stringify(detail),
+      syncedAt,
+      joinedAt: row.joined_at ? new Date(row.joined_at) : null,
+    },
+  });
+
+  return { ok: true };
 }
 
 export type SyncResult =

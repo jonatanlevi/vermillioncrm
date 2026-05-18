@@ -1,4 +1,5 @@
 import { getCeoDb } from "./db-access";
+import { getAppProductSnapshot, type AppProductSnapshot } from "./product-snapshot";
 import { ensureDemoTeam } from "./seed";
 
 function monthKey(d = new Date()) {
@@ -33,6 +34,7 @@ export type EmployeePerformanceRow = {
 
 export type CeoDashboard = {
   monthKey: string;
+  product: AppProductSnapshot;
   activeEmployees: number;
   openDeals: number;
   wonDealsMonth: number;
@@ -51,6 +53,7 @@ export type CeoDashboard = {
 };
 
 export async function getCeoDashboard(): Promise<CeoDashboard> {
+  const [product] = await Promise.all([getAppProductSnapshot()]);
   await ensureDemoTeam();
 
   const ceoDb = getCeoDb();
@@ -182,6 +185,7 @@ export async function getCeoDashboard(): Promise<CeoDashboard> {
 
   return {
     monthKey: mk,
+    product,
     activeEmployees: employees.filter((e) => e.status === "ACTIVE").length,
     openDeals,
     wonDealsMonth,

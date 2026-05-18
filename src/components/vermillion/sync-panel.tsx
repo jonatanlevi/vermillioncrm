@@ -49,7 +49,12 @@ export function AppSyncPanel({
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm">
       <p className="font-semibold">יניקת נתונים מאפליקציית VerMillion</p>
       <p className="mt-1 text-[var(--muted)]">
-        ה-CRM שומר עותק מקומי בלבד. האפליקציה נשארת במערכת נפרדת — אין שיתוף מסד נתונים.
+        ה-CRM שומר עותק מקומי בלבד. עם Realtime מופעל ב-Supabase — שינויים (הרשמה,
+        Stamp, צ׳אט) מסתנכרנים אוטומטית תוך כמה שניות.
+      </p>
+      <p className="mt-2 text-xs text-green-400/90">
+        האזנה לשינויים: פעילה כשהשרת רץ (ברירת מחדל). לכיבוי:{" "}
+        <code className="text-green-200">VERMILLION_REALTIME_SYNC=false</code>
       </p>
 
       <dl className="mt-3 grid gap-1 text-xs text-[var(--muted)] sm:grid-cols-2">

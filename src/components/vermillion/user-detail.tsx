@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getVermillionUserDetail, formatTimer } from "@/lib/vermillion/queries";
 import { IngestionGate } from "./ingestion-gate";
+import { UserAdminActions } from "./user-admin-actions";
 
 export async function VermillionUserDetail({ userId }: { userId: string }) {
   const user = await getVermillionUserDetail(userId);
@@ -17,7 +18,7 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
 
   return (
     <IngestionGate>
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <Link href="/vermillion/users" className="text-sm text-[var(--accent)] hover:underline">
         ← חזרה לכל המשתמשים
       </Link>
@@ -25,7 +26,16 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
       <header>
         <h1 className="text-2xl font-bold">{user.name || user.email}</h1>
         <p className="text-sm text-[var(--muted)]">{user.id}</p>
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          «רענן מהאפליקציה» מעדכן צ׳אט, משחקים וזיכרון AI
+        </p>
       </header>
+
+      <UserAdminActions
+        userId={user.id}
+        email={user.email}
+        name={user.name || user.first_name}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card title="מנוי" value={user.subscription} />
@@ -33,6 +43,11 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
         <Card title="Streak" value={String(c?.streak_days ?? 0)} />
         <Card title="Stamps החודש" value={String(user.stampsThisMonth)} />
         <Card title="ניקוד החודש" value={String(user.totalScoreThisMonth)} />
+        <Card
+          title="הפרש ממוצע (ms)"
+          value={user.avgMsDiffThisMonth != null ? String(user.avgMsDiffThisMonth) : "—"}
+          mono
+        />
         <Card title="משחקים" value={String(user.game_sessions_count)} />
         <Card title="הודעות AI" value={String(user.chatMessageCount)} />
         <Card title="V-Coins" value={String(user.v_coins ?? 0)} />
@@ -75,13 +90,34 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
           <Item label="טלפון" value={user.phone ?? "—"} />
           <Item label="תאריך לידה" value={user.date_of_birth ?? "—"} />
           <Item label="אונבורדינג" value={`${user.onboardingDays}/7 ימים`} />
+          <Item label="אונבורדינג הושלם" value={user.onboarding_complete ? "כן" : "לא"} />
           <Item label="פרופיל מלא" value={user.profile_intake_complete ? "כן" : "לא"} />
+          <Item label="שפה" value={user.lang ?? "—"} />
           <Item
             label="הצטרף"
             value={new Date(user.joined_at).toLocaleDateString("he-IL")}
           />
+          <Item
+            label="סונכרן ל-CRM"
+            value={
+              user.syncedAt
+                ? new Date(user.syncedAt).toLocaleString("he-IL")
+                : "—"
+            }
+          />
         </dl>
       </section>
+
+      {!c && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-2 font-semibold">⏱ התחייבות / טיימר DNA</h2>
+          <p className="text-sm text-[var(--muted)]">לא הוגדר טיימר — רענן מהאפליקציה אחרי הגדרה</p>
+        </section>
+      )}
+
+      {user.onboarding_answers.length === 0 && user.onboardingDays === 0 && (
+        <EmptyHint text="אין תשובות אונבורדינג — לחץ «רענן מהאפליקציה»" />
+      )}
 
       {user.onboarding_answers.length > 0 && (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -97,6 +133,110 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
             ))}
           </ul>
         </section>
+      )}
+
+      {user.financial_data && Object.keys(user.financial_data).length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-3 font-semibold">פרופיל פיננסי (אפיון)</h2>
+          <dl className="grid gap-2 text-sm sm:grid-cols-2">
+            {Object.entries(user.financial_data).map(([key, val]) => (
+              <Item
+                key={key}
+                label={key}
+                value={val != null && val !== "" ? String(val) : "—"}
+              />
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {(!user.ai_memory?.insights || user.ai_memory.insights.length === 0) && (
+        <EmptyHint text="אין זיכרון AI עדיין" />
+      )}
+
+      {user.ai_memory?.insights && user.ai_memory.insights.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-3 font-semibold">
+            זיכרון AI ({user.ai_memory.sessionCount ?? 0} שיחות)
+          </h2>
+          <ul className="space-y-2 text-sm">
+            {user.ai_memory.insights.map((line, i) => (
+              <li key={i} className="rounded-lg bg-black/20 px-3 py-2">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {user.chat_messages.length === 0 && user.chatMessageCount === 0 && (
+        <EmptyHint text="אין היסטוריית צ׳אט — רענן מהאפליקציה" />
+      )}
+
+      {user.chat_messages.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-3 font-semibold">היסטוריית צ׳אט AI</h2>
+          <ul className="max-h-96 space-y-2 overflow-y-auto text-sm">
+            {user.chat_messages.map((m, i) => (
+              <li
+                key={i}
+                className={`rounded-lg px-3 py-2 ${
+                  m.role === "user" ? "bg-[var(--accent-dim)]/30" : "bg-black/20"
+                }`}
+              >
+                <span className="text-xs text-[var(--muted)]">
+                  {m.role === "user" ? "משתמש" : "יועץ"}:
+                </span>{" "}
+                {m.text}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {user.game_sessions.length === 0 && user.game_sessions_count === 0 && (
+        <EmptyHint text="אין משחקים רשומים" />
+      )}
+
+      {user.game_sessions.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 overflow-x-auto">
+          <h2 className="mb-3 font-semibold">משחקים ({user.game_sessions_count})</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[var(--muted)]">
+                <th className="pb-2 text-right">משחק</th>
+                <th className="pb-2 text-right">הושלם</th>
+                <th className="pb-2 text-right">משך (ms)</th>
+                <th className="pb-2 text-right">ניקוד</th>
+              </tr>
+            </thead>
+            <tbody>
+              {user.game_sessions.map((g) => (
+                <tr key={g.id} className="border-t border-[var(--border)]/40">
+                  <td className="py-2">{g.game_type ?? "—"}</td>
+                  <td className="py-2">
+                    {g.completed_at
+                      ? new Date(g.completed_at).toLocaleString("he-IL")
+                      : "—"}
+                  </td>
+                  <td className="py-2">{g.duration_ms ?? "—"}</td>
+                  <td className="py-2">{g.score ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {user.onboarding_days_completed.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-3 font-semibold">ימי אונבורדינג שהושלמו</h2>
+          <p className="text-sm">{user.onboarding_days_completed.join(", ")}</p>
+        </section>
+      )}
+
+      {user.recent_stamps.length === 0 && user.stampsThisMonth === 0 && (
+        <EmptyHint text="אין Stamps החודש" />
       )}
 
       {user.recent_stamps.length > 0 && (
@@ -160,5 +300,13 @@ function Item({ label, value }: { label: string; value: string }) {
       <dt className="text-[var(--muted)]">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
+  );
+}
+
+function EmptyHint({ text }: { text: string }) {
+  return (
+    <p className="rounded-lg border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)]">
+      {text}
+    </p>
   );
 }

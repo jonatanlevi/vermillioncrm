@@ -56,14 +56,60 @@ export async function CeoDashboard() {
         </div>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="עובדים פעילים" value={String(data.activeEmployees)} />
-        <Kpi label="עסקאות בצינור" value={String(data.openDeals)} />
-        <Kpi label="נסגרו החודש" value={String(data.wonDealsMonth)} />
-        <Kpi label="הכנסות החודש" value={formatMoney(data.salesAmountMonth)} highlight />
-        <Kpi label="קמפיינים" value={String(data.campaignsMonth)} />
-        <Kpi label="וואטסאפ יוצא" value={String(data.whatsappMonth)} />
-        <Kpi label="פעולות AI (חודש)" value={String(data.agentRunsMonth)} />
+      <section
+        className="rounded-xl border border-[var(--accent)]/30 bg-[var(--accent-dim)]/10 p-5"
+        dir="rtl"
+      >
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">מוצר VerMillion (נתונים אמיתיים)</h2>
+            <p className="text-xs text-[var(--muted)]">
+              מ-AppUser / AppSyncMeta · סנכרון אחרון:{" "}
+              {data.product.lastSyncAt
+                ? new Date(data.product.lastSyncAt).toLocaleString("he-IL")
+                : "טרם סונכרן"}{" "}
+              · סטטוס: {data.product.lastSyncStatus}
+            </p>
+          </div>
+          <Link
+            href="/vermillion/users"
+            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm text-white"
+          >
+            כל המשתמשים →
+          </Link>
+        </div>
+        {data.product.configured ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Kpi label="משתמשים במאגר" value={String(data.product.users)} />
+            <Kpi label="פרימיום" value={String(data.product.premium)} highlight />
+            <Kpi label="Stamps החודש" value={String(data.product.totalStampsThisMonth)} />
+            <Kpi label="ממוצע Streak" value={String(data.product.avgStreak)} />
+            <Kpi label="הגדירו טיימר" value={String(data.product.withTimerSet)} />
+            <Kpi label="סיימו אונבורדינג" value={String(data.product.onboardingComplete)} />
+            <Kpi label="פעילים ב-Stamps" value={String(data.product.stampedUsersThisMonth)} />
+            <Kpi label="חינם" value={String(data.product.free)} />
+          </div>
+        ) : (
+          <p className="text-sm text-amber-200">
+            אין נתוני מוצר במאגר המקומי.{" "}
+            <Link href="/vermillion" className="underline">
+              סנכרן מאפליקציה
+            </Link>
+          </p>
+        )}
+      </section>
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-[var(--muted)]">תפעול פנימי (צוות ו-CRM)</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi label="עובדים פעילים" value={String(data.activeEmployees)} />
+          <Kpi label="עסקאות בצינור" value={String(data.openDeals)} />
+          <Kpi label="נסגרו החודש" value={String(data.wonDealsMonth)} />
+          <Kpi label="הכנסות החודש" value={formatMoney(data.salesAmountMonth)} highlight />
+          <Kpi label="קמפיינים" value={String(data.campaignsMonth)} />
+          <Kpi label="וואטסאפ יוצא" value={String(data.whatsappMonth)} />
+          <Kpi label="פעולות AI (חודש)" value={String(data.agentRunsMonth)} />
+        </div>
       </div>
 
       {data.alerts.length > 0 && (

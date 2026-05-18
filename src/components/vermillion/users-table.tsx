@@ -2,13 +2,19 @@ import Link from "next/link";
 import { getVermillionUsers, formatTimer } from "@/lib/vermillion/queries";
 import { IngestionGate } from "./ingestion-gate";
 
+/** עמודות שמוסתרות מתחת ל-md — מופיעות במסכים רחבים */
+const secondaryCol = "hidden md:table-cell";
+
 export async function VermillionUsersTable() {
   const users = await getVermillionUsers();
 
   return (
     <IngestionGate>
-      <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]">
-        <table className="w-full min-w-[900px] text-sm">
+      <div
+        className="max-w-full overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+        dir="rtl"
+      >
+        <table className="w-full min-w-[640px] text-sm md:min-w-[900px]">
           <thead>
             <tr className="border-b border-[var(--border)] bg-black/20 text-[var(--muted)]">
               <th className="px-3 py-3 text-right">משתמש</th>
@@ -17,11 +23,12 @@ export async function VermillionUsersTable() {
               <th className="px-3 py-3 text-right">טיימר DNA</th>
               <th className="px-3 py-3 text-right">שישי/שבת</th>
               <th className="px-3 py-3 text-right">Streak</th>
-              <th className="px-3 py-3 text-right">Stamps</th>
-              <th className="px-3 py-3 text-right">ניקוד</th>
-              <th className="px-3 py-3 text-right">אונבורדינג</th>
-              <th className="px-3 py-3 text-right">צ׳אט AI</th>
-              <th className="px-3 py-3 text-right">הצטרף</th>
+              <th className={`px-3 py-3 text-right ${secondaryCol}`}>Stamps</th>
+              <th className={`px-3 py-3 text-right ${secondaryCol}`}>ניקוד</th>
+              <th className={`px-3 py-3 text-right ${secondaryCol}`}>אונבורדינג</th>
+              <th className={`px-3 py-3 text-right ${secondaryCol}`}>צ׳אט AI</th>
+              <th className={`px-3 py-3 text-right ${secondaryCol}`}>הצטרף</th>
+              <th className="px-3 py-3 text-right">ניהול</th>
             </tr>
           </thead>
           <tbody>
@@ -44,9 +51,9 @@ export async function VermillionUsersTable() {
                     >
                       {u.name || `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || "—"}
                     </Link>
-                    <p className="text-xs text-[var(--muted)]">{u.email}</p>
+                    <p className="max-w-[200px] truncate text-xs text-[var(--muted)]">{u.email}</p>
                   </td>
-                  <td className="px-3 py-2">{u.phone ?? "—"}</td>
+                  <td className="whitespace-nowrap px-3 py-2">{u.phone ?? "—"}</td>
                   <td className="px-3 py-2">
                     <span
                       className={
@@ -58,18 +65,28 @@ export async function VermillionUsersTable() {
                       {u.subscription}
                     </span>
                   </td>
-                  <td className="px-3 py-2 font-mono">{u.timerDisplay ?? "—"}</td>
-                  <td className="px-3 py-2 text-xs">{weekend}</td>
+                  <td className="whitespace-nowrap px-3 py-2 font-mono">
+                    {u.timerDisplay ?? "—"}
+                  </td>
+                  <td className="max-w-[140px] px-3 py-2 text-xs leading-snug">{weekend}</td>
                   <td className="px-3 py-2">{c?.streak_days ?? 0}</td>
-                  <td className="px-3 py-2">{u.stampsThisMonth}</td>
-                  <td className="px-3 py-2">{u.totalScoreThisMonth}</td>
-                  <td className="px-3 py-2">
+                  <td className={`px-3 py-2 ${secondaryCol}`}>{u.stampsThisMonth}</td>
+                  <td className={`px-3 py-2 ${secondaryCol}`}>{u.totalScoreThisMonth}</td>
+                  <td className={`px-3 py-2 ${secondaryCol}`}>
                     {u.onboardingDays}/7
                     {u.onboarding_complete ? " ✓" : ""}
                   </td>
-                  <td className="px-3 py-2">{u.chatMessageCount}</td>
-                  <td className="px-3 py-2 text-xs text-[var(--muted)]">
+                  <td className={`px-3 py-2 ${secondaryCol}`}>{u.chatMessageCount}</td>
+                  <td className={`px-3 py-2 text-xs text-[var(--muted)] ${secondaryCol}`}>
                     {new Date(u.joined_at).toLocaleDateString("he-IL")}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Link
+                      href={`/vermillion/users/${u.id}`}
+                      className="whitespace-nowrap text-xs text-[var(--accent)] hover:underline"
+                    >
+                      פרטים →
+                    </Link>
                   </td>
                 </tr>
               );

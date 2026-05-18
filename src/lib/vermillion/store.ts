@@ -98,32 +98,35 @@ export async function getVermillionUserDetailFromStore(
 
   const row = rowFromAppUser(record);
   if (!row) return null;
+  const syncedAt = record.syncedAt;
 
   try {
-    const detail = JSON.parse(record.detailJson) as {
-      onboarding_answers: VermillionUserDetail["onboarding_answers"];
-      financial_data: VermillionUserDetail["financial_data"];
-      recent_stamps: VermillionUserDetail["recent_stamps"];
-      game_sessions_count: number;
-      monthStamps?: { score?: number; ms_diff?: number }[];
-    };
-
-    const monthStamps = detail.monthStamps ?? detail.recent_stamps ?? [];
+    const detail = JSON.parse(record.detailJson) as Partial<VermillionUserDetail>;
 
     return {
       ...row,
+      syncedAt,
       onboarding_answers: detail.onboarding_answers ?? [],
       financial_data: detail.financial_data ?? null,
       recent_stamps: detail.recent_stamps ?? [],
       game_sessions_count: detail.game_sessions_count ?? 0,
+      chat_messages: detail.chat_messages ?? [],
+      ai_memory: detail.ai_memory ?? null,
+      onboarding_days_completed: detail.onboarding_days_completed ?? [],
+      game_sessions: detail.game_sessions ?? [],
     };
   } catch {
     return {
       ...row,
+      syncedAt,
       onboarding_answers: [],
       financial_data: null,
       recent_stamps: [],
       game_sessions_count: 0,
+      chat_messages: [],
+      ai_memory: null,
+      onboarding_days_completed: [],
+      game_sessions: [],
     };
   }
 }

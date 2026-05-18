@@ -2,16 +2,64 @@ import { ClaudeProvider } from "./claude";
 import { GrokProvider } from "./grok";
 import type { AIProvider, AIProviderName } from "./types";
 
+export const AI_NOT_CONFIGURED_MESSAGE =
+  "AI לא מוגדר — הוסף XAI_API_KEY או ANTHROPIC_API_KEY ל-.env";
+
 let cached: AIProvider | null = null;
 
-export function getAIProvider(force?: AIProviderName): AIProvider {
-  const name =
-    force ?? (process.env.AI_PROVIDER as AIProviderName | undefined) ?? "grok";
+function hasApiKey(value: string | undefined): boolean {
+  return Boolean(value?.trim());
+}
 
-  if (!force && cached && cached.name === name) return cached;
+class UnconfiguredAIProvider implements AIProvider {
+  readonly name = "grok" as const;
+
+  async complete(): Promise<string> {
+    throw new Error(AI_NOT_CONFIGURED_MESSAGE);
+  }
+}
+
+/** בוחר provider עם fallback: grok ללא מפתח → claude */
+function resolveProviderName(force?: AIProviderName): AIProviderName | "none" {
+  if (force === "grok") {
+    if (hasApiKey(process.env.XAI_API_KEY)) return "grok";
+    if (hasApiKey(process.env.ANTHROPIC_API_KEY)) return "claude";
+    return "none";
+  }
+  if (force === "claude") {
+    if (hasApiKey(process.env.ANTHROPIC_API_KEY)) return "claude";
+    if (hasApiKey(process.env.XAI_API_KEY)) return "grok";
+    return "none";
+  }
+
+  const preferred = (process.env.AI_PROVIDER as AIProviderName | undefined) ?? "grok";
+  if (preferred === "claude") {
+    if (hasApiKey(process.env.ANTHROPIC_API_KEY)) return "claude";
+    if (hasApiKey(process.env.XAI_API_KEY)) return "grok";
+    return "none";
+  }
+
+  if (hasApiKey(process.env.XAI_API_KEY)) return "grok";
+  if (hasApiKey(process.env.ANTHROPIC_API_KEY)) return "claude";
+  return "none";
+}
+
+export function getAIProvider(force?: AIProviderName): AIProvider {
+  const resolved = resolveProviderName(force);
+
+  if (resolved === "none") {
+    if (!force && cached instanceof UnconfiguredAIProvider) return cached;
+    const unconfigured = new UnconfiguredAIProvider();
+    if (!force) cached = unconfigured;
+    return unconfigured;
+  }
+
+  if (!force && cached && cached.name === resolved && !(cached instanceof UnconfiguredAIProvider)) {
+    return cached;
+  }
 
   const provider: AIProvider =
-    name === "claude" ? new ClaudeProvider() : new GrokProvider();
+    resolved === "claude" ? new ClaudeProvider() : new GrokProvider();
 
   if (!force) cached = provider;
   return provider;

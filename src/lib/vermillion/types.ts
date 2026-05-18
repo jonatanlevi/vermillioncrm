@@ -76,9 +76,28 @@ export interface VermillionDashboard {
   recentUsers: VermillionUserRow[];
 }
 
+export interface VermillionChatMessage {
+  role?: string;
+  text?: string;
+  content?: string;
+}
+
+export interface VermillionGameSession {
+  id: string;
+  game_type?: string;
+  completed_at?: string;
+  duration_ms?: number;
+  score?: number;
+}
+
 export interface VermillionUserDetail extends VermillionUserRow {
+  syncedAt?: Date;
   onboarding_answers: { day: number; question_key: string; answer: string | null }[];
   financial_data: Record<string, unknown> | null;
   recent_stamps: VermillionDailyStamp[];
   game_sessions_count: number;
+  chat_messages: VermillionChatMessage[];
+  ai_memory: { insights?: string[]; sessionCount?: number } | null;
+  onboarding_days_completed: number[];
+  game_sessions: VermillionGameSession[];
 }
