@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  tags      String   @default("[]")
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales            Sale[]
+  whatsappMessages WhatsappMessage[]
+  invoices         Invoice[]
+}
+
+model Sale {
+  id                 String    @id @default(cuid())
+  customerId         String?
+  customer           Customer? @relation(fields: [customerId], references: [id])
+  assignedEmployeeId String?
+  assignedEmployee   Employee? @relation(fields: [assignedEmployeeId], references: [id])
+  title              String
+  amount             Float
+  currency           String    @default("ILS")
+  status             String    @default("LEAD")
+  source             String?
+  closedAt           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model Invoice {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  number     String   @unique
+  amount     Float
+  currency   String   @default("ILS")
+  status     String   @default("DRAFT")
+  issuedAt   DateTime?
+  dueAt      DateTime?
+  pdfUrl     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  type        String
+  category    String
+  amount      Float
+  currency    String   @default("ILS")
+  description String?
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Campaign {
+  id               String    @id @default(cuid())
+  name             String
+  objective        String?
+  status           String    @default("DRAFT")
+  networks         String    @default("[]")
+  budget           Float?
+  startAt          DateTime?
+  endAt            DateTime?
+  agentRunId       String?
+  ownerEmployeeId  String?
+  ownerEmployee    Employee? @relation(fields: [ownerEmployeeId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  posts SocialPost[]
+}
+
+model SocialPost {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  network     String
+  content     String
+  mediaUrl    String?
+  status      String   @default("DRAFT")
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model WhatsappMessage {
+  id                String    @id @default(cuid())
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  sentByEmployeeId  String?
+  sentByEmployee    Employee? @relation(fields: [sentByEmployeeId], references: [id])
+  phone             String
+  body              String
+  direction         String
+  status            String    @default("QUEUED")
+  sentAt            DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  type      String
+  prompt    String
+  url       String?
+  status    String   @default("PENDING")
+  metadata  String   @default("{}")
+  createdAt DateTime @default(now())
+}
+
+model VermillionSnapshot {
+  id         String   @id @default(cuid())
+  metric     String
+  value      Float
+  unit       String?
+  raw        String   @default("{}")
+  capturedAt DateTime @default(now())
+}
+
+/// מטא-נתוני סנכרון מאפליקציית VerMillion (לא Supabase משותף — רק יניקה)
+model AppSyncMeta {
+  id             String    @id @default("singleton")
+  lastSyncAt     DateTime?
+  lastSyncStatus String    @default("NEVER")
+  lastSyncError  String?
+  monthKey       String?
+  dashboardCache String    @default("{}")
+  userCount      Int       @default(0)
+  updatedAt      DateTime  @updatedAt
+}
+
+/// עותק מקומי של משתמש אפליקציה (מקור: יניקה חד-פעמית, לא DB משותף)
+model AppUser {
+  externalId     String   @id
+  email          String?
+  name           String?
+  phone          String?
+  subscription   String   @default("free")
+  profileJson    String   @default("{}")
+  commitmentJson String   @default("null")
+  metricsJson    String   @default("{}")
+  detailJson     String   @default("{}")
+  syncedAt       DateTime @default(now())
+  joinedAt       DateTime?
+}
+
+model AgentRun {
+  id         String    @id @default(cuid())
+  agentId    String
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id])
+  input      String
+  output     String?
+  status     String    @default("PENDING")
+  provider   String    @default("grok")
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+}
+
+/// צוות פנימי — נפרד ממשתמשי האפליקציה (AppUser)
+model Employee {
+  id         String    @id @default(cuid())
+  email      String    @unique
+  name       String
+  role       String    @default("SALES")
+  department String?
+  phone      String?
+  status     String    @default("ACTIVE")
+  hiredAt    DateTime?
+  managerId  String?
+  manager    Employee? @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports    Employee[] @relation("EmployeeManager")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  activities       EmployeeActivity[]
+  goals            EmployeeGoal[]
+  attendance       EmployeeAttendance[]
+  sales            Sale[]
+  campaigns        Campaign[]
+  agentRuns        AgentRun[]
+  whatsappMessages WhatsappMessage[]
+}
+
+/// יומן נוכחות יומי
+model EmployeeAttendance {
+  id          String    @id @default(cuid())
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  workDate    String
+  status      String    @default("PRESENT")
+  clockIn     DateTime?
+  clockOut    DateTime?
+  hoursWorked Float?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([employeeId, workDate])
+}
+
+model EmployeeActivity {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   String   @default("{}")
+  createdAt  DateTime @default(now())
+}
+
+model EmployeeGoal {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  monthKey    String
+  metric      String
+  targetValue Float
+  actualValue Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, monthKey, metric])
+}
+
+model AutomationJob {
+  id        String   @id @default(cuid())
+  type      String
+  payload   String   @default("{}")
+  status    String   @default("QUEUED")
+  result    String?
+  attempts  Int      @default(0)
+  runAt     DateTime @default(now())
+  createdAt DateTime @default(now())
+}

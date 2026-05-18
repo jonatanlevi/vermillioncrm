@@ -1,0 +1,177 @@
+---
+description: זיכרון מלא — VerMillion CRM, ארכיטקטורה, יניקה, עובדים, נוכחות, נתיבים
+alwaysApply: true
+---
+
+# VerMillion CRM — זיכרון פרויקט (מעודכן)
+
+## מטרה
+CRM פנימי לניהול עסק **VerMillion** — לא אותה מערכת כמו האפליקציה.
+- שיקוף נתוני משתמשי האפליקציה (יניקה חד-כיוונית)
+- ניהול צוות פנימי, נוכחות, מכירות, קמפיינים, כספים, וואטסאפ, מדיה
+- סוכני AI + מצב אוטומטי (orchestrator)
+
+## נתיבי פרויקט
+| פרויקט | נתיב |
+|--------|------|
+| CRM | `c:\Users\97254\Desktop\vermillioncrm` |
+| אפליקציה (Expo) | `c:\Users\97254\Desktop\million\vermillion` |
+| תוכנית עבודה | `docs/WORK_PLAN.md` |
+| ארכיטקטורה | `docs/ARCHITECTURE.md` |
+| מודול מנכ"ל | `docs/CEO_MODULE.md` |
+
+**Deploy אפליקציה:** https://vermillion-ashen.vercel.app → `VERMILLION_APP_URL`
+
+---
+
+## עקרון ארכיטקטוני קריטי (ADR-002)
+
+**האפליקציה וה-CRM הן שתי מערכות נפרדות.**
+
+```
+אפליקציית VerMillion → [מקור חיצוני] ──יניקה──► Prisma (CRM) ──► UI / סוכנים
+```
+
+- **אין** Supabase משותף בממשק — אין לקרוא מהמקור ישירות בעמודים/סוכנים
+- יניקה **רק** ב-`src/lib/ingestion/app-source.ts` + `src/lib/vermillion/sync.ts`
+- קריאה לתצוגה **רק** מ-`AppUser`, `AppSyncMeta` ב-Prisma (`store.ts`, `queries.ts`)
+- `POST /api/app/sync` — כפתור «סנכרן עכשיו מאפליקציה»
+- משתני סביבה (שרת בלבד):
+  - `VERMILLION_INGESTION_URL` + `VERMILLION_INGESTION_SERVICE_KEY`
+  - תאימות: `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`
+
+---
+
+## הפרדת «לקוח» vs «עובד» (ADR-001)
+
+| בממשק | מקור | מי זה |
+|--------|------|--------|
+| **משתמשי האפליקציה** | `AppUser` (אחרי יניקה) | מנויי VerMillion, טיימרים, Stamps |
+| **צוות ומנכ״ל** | `Employee` ב-Prisma | עובדים פנימיים של העסק |
+| **סיכום CRM מקומי** | `Customer`, `Sale`, … | לידים, קמפיינים, חשבוניות — מתמלא בסוכנים |
+
+**אל תערבב** `profiles` (אפליקציה) עם `Employee` (צוות).
+
+---
+
+## מסכים ונתיבים
+
+| נתיב | תוכן |
+|------|------|
+| `/` | לוח בקרה — משתמשי אפליקציה (מקומי), קישור עובדים, CRM מקומי, Autopilot |
+| `/vermillion` | דשבורד משתמשי אפליקציה + `IngestionGate` + סנכרון |
+| `/vermillion/users`, `/[id]` | רשימה / כרטיס משתמש (מ-`AppUser`) |
+| `/ceo` | דשבורד מנכ"ל — KPI צוות, דירוג, התראות |
+| `/ceo/team` | רשימת עובדים |
+| `/ceo/team/[id]` | כרטיס עובד + יעדים |
+| `/ceo/attendance` | **יומן נוכחות** — `?date=YYYY-MM-DD` |
+| `/ceo/activity` | יומן פעילות CRM |
+| `/campaigns` | 13 רשתות (`src/lib/social/networks.ts`) |
+| `/finance`, `/whatsapp`, `/sales`, `/media` | סוכנים + מודולים |
+
+**תפריט:** «משתמשי האפליקציה» (לא «מעקב VerMillion»), «צוות ומנכ״ל» + תת-«יומן נוכחות».
+
+---
+
+## Prisma — מודלים עיקריים
+
+**יניקת אפליקציה:** `AppSyncMeta`, `AppUser`
+
+**צוות:** `Employee`, `EmployeeActivity`, `EmployeeGoal`, `EmployeeAttendance`
+- נוכחות: `workDate` (YYYY-MM-DD), `status` (PRESENT|LATE|REMOTE|ABSENT|SICK|VACATION|HALF_DAY), `clockIn`, `clockOut`, `hoursWorked`
+- `@@unique([employeeId, workDate])`
+- API: `POST /api/ceo/attendance` — `action: clock_in|clock_out` או upsert מלא
+
+**CRM עסקי:** `Customer`, `Sale`, `Campaign`, `Invoice`, `Transaction`, `WhatsappMessage`, `MediaAsset`, `AgentRun`, `AutomationJob`, `VermillionSnapshot`
+
+**קישורי עובד:** `Sale.assignedEmployeeId`, `Campaign.ownerEmployeeId`, `AgentRun.employeeId`, `WhatsappMessage.sentByEmployeeId`
+
+**DB:** SQLite dev (`prisma/dev.db`) → PostgreSQL בפרודקשן
+
+---
+
+## קבצים חשובים
+
+```
+src/lib/ingestion/app-source.ts   # מקור יניקה בלבד
+src/lib/vermillion/sync.ts        # יניקה → Prisma
+src/lib/vermillion/store.ts       # קריאה מקומית
+src/lib/vermillion/status.ts      # סטטוס סנכרון
+src/lib/ceo/queries.ts            # דשבורד מנכ"ל
+src/lib/ceo/attendance.ts         # יומן נוכחות
+src/lib/ceo/seed.ts               # צוות + נוכחות לדוגמה (ensureDemoTeam)
+src/lib/ceo/db-access.ts          # getCeoDb() + PrismaEmployeeModelsMissingError
+src/lib/orchestrator.ts           # runAgent, pipeline, jobs
+src/lib/agents/*                  # סוכנים לפי דומיין
+```
+
+---
+
+## סוכני AI
+
+| ID | עמוד | הערה |
+|----|------|------|
+| vermillion | `/vermillion` | ניתוח מ-`AppUser` מקומי בלבד |
+| campaigns, finance, whatsapp, sales, media | לפי נתיב | Grok עכשיו |
+| ceo | מתוכנן (`docs/CEO_MODULE.md`) | סוכן ניהולי — עדיין לא מלא |
+
+`AI_PROVIDER=grok` + `XAI_API_KEY` (או `claude` + `ANTHROPIC_API_KEY`)
+
+---
+
+## מה בנוי (✅)
+
+- Modular Monolith Next.js 15, RTL עברית
+- יניקת אפליקציה → `AppUser` (לא Supabase ישיר ב-UI)
+- מודול מנכ"ל `/ceo` + צוות לדוגמה
+- יומן נוכחות `/ceo/attendance`
+- 6 סוכנים + orchestrator + jobs בסיסי
+- קמפיינים 13 רשתות, מכירות, stubs וואטסאפ/סושיאל
+
+## מה חסר (❌)
+
+- Auth + הרשאות CEO/עובד
+- `.env` מלא (מפתח יניקה, XAI)
+- אינטגרציות אמיתיות (WhatsApp, פרסום רשתות)
+- סוכן `ceo` AI מלא
+- Cron, deploy production, PostgreSQL
+
+---
+
+## Supabase (רק ליניקה — לא ב-UI)
+
+- Project: `hegbvrvmgvmmbigfpqax`
+- טבלאות: `profiles`, `commitment` (טיימר DNA), `daily_stamps`, `onboarding_*`, `chat_history`, `prize_config`, `operational_costs`, …
+- CRM **לא כותב** `daily_stamps` — רק קורא בזמן יניקה
+
+---
+
+## פקודות
+
+```powershell
+cd c:\Users\97254\Desktop\vermillioncrm
+npm run dev                    # http://localhost:3000
+npx prisma db push             # אחרי שינוי schema
+npx prisma generate            # חובה אחרי schema — עצור dev אם EPERM
+# שגיאת chunk: מחק .next והפעל מחדש dev
+```
+
+---
+
+## כללים למפתח / Agent
+
+1. **אל תבנה** הרחבת Chrome — לא הפרויקט (המשתמש רצה אוטומציה ב-IDE, לא בדפדפן).
+2. **אל תקרא** `getIngestionClient()` מ-UI — רק `sync.ts`.
+3. **אל תערבב** עובדים ומשתמשי אפליקציה בשמות ובמודלים.
+4. `export const dynamic = "force-dynamic"` לעמודים עם DB.
+5. אחרי `prisma schema` — `db push` + `generate` (עצור `npm run dev` אם נעול).
+6. הימנע מטעויות `motion.div` בלי import — השתמש ב-`<div>` רגיל.
+7. commits רק כשהמשתמש מבקש במפורש.
+
+---
+
+## העדפות משתמש (שיחה)
+
+- רוצה CRM מלא: לקוחות אפליקציה + עובדים + מנכ"ל — **לא** רק אחד מהם.
+- האפליקציה נשארת נפרדת; CRM רק **מייבא** נתונים.
+- לא מעקב עובדים מתוך Supabase — צוות ב-Prisma בלבד.
