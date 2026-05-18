@@ -20,6 +20,19 @@ CRM פנימי לניהול עסק VerMillion:
 
 ---
 
+## סשן 2026-05-18 (ב): RBAC — התחברות והרשאות
+
+| נושא | סטטוס | פירוט |
+|------|--------|--------|
+| NextAuth + Credentials | ✅ | `src/auth.ts` · CEO מ-`.env` · עובדים מ-`Employee` + bcrypt |
+| `accessRole` + `permissions` + `passwordHash` | ✅ | Prisma `Employee` — `role` נשאר תפקיד עבודה |
+| Middleware | ✅ | `src/middleware.ts` — routes + `/ceo/employees` ל-CEO בלבד |
+| ניהול עובדים | ✅ | `/ceo/employees` · `POST/PATCH/DELETE` `/api/ceo/employees` |
+| ניווט דינמי | ✅ | `sidebar.tsx` לפי session |
+| `.env` | ידני | `AUTH_SECRET`, `CRM_ADMIN_EMAIL`, `CRM_ADMIN_PASSWORD` |
+
+---
+
 ## סשן 2026-05-18: ניהול נטישה
 
 | נושא | סטטוס | פירוט |

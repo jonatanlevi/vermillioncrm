@@ -5,10 +5,13 @@ import {
   upsertAttendance,
   workDateKey,
 } from "@/lib/ceo/attendance";
+import { requireCeoModuleAccess, apiUnauthorized } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  if (!(await requireCeoModuleAccess())) return apiUnauthorized();
+
   try {
     const body = await req.json();
     const action = body.action as string | undefined;

@@ -172,19 +172,25 @@ model AgentRun {
 
 /// צוות פנימי — נפרד ממשתמשי האפליקציה (AppUser)
 model Employee {
-  id         String    @id @default(cuid())
-  email      String    @unique
-  name       String
-  role       String    @default("SALES")
-  department String?
-  phone      String?
-  status     String    @default("ACTIVE")
-  hiredAt    DateTime?
-  managerId  String?
-  manager    Employee? @relation("EmployeeManager", fields: [managerId], references: [id])
-  reports    Employee[] @relation("EmployeeManager")
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  /// תפקיד עבודה (מכירות, שיווק…) — לא הרשאות CRM
+  role          String    @default("SALES")
+  /// הרשאות התחברות: CEO | EMPLOYEE
+  accessRole    String    @default("EMPLOYEE")
+  passwordHash  String?
+  permissions   String    @default("{}")
+  isActive      Boolean   @default(true)
+  department    String?
+  phone         String?
+  status        String    @default("ACTIVE")
+  hiredAt       DateTime?
+  managerId     String?
+  manager       Employee? @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports       Employee[] @relation("EmployeeManager")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   activities       EmployeeActivity[]
   goals            EmployeeGoal[]

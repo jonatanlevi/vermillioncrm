@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireCeoSession, apiUnauthorized } from "@/lib/auth/session";
 import { createEmployee } from "@/lib/ceo/employees";
+import { createCrmEmployee } from "@/lib/ceo/employees-auth";
+import type { PermissionMap } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const session = await requireCeoSession();
+  if (!session) return apiUnauthorized();
+
   try {
     const body = await req.json();
 
@@ -12,6 +18,20 @@ export async function POST(req: Request) {
         { ok: false, error: "שם ואימייל חובה" },
         { status: 400 }
       );
+    }
+
+    if (body.crmAccess && body.password) {
+      const employee = await createCrmEmployee({
+        name: body.name,
+        email: body.email,
+        password: body.password,
+        permissions: (body.permissions ?? {}) as PermissionMap,
+        jobRole: body.jobRole,
+      });
+      return NextResponse.json({
+        ok: true,
+        employee: { id: employee.id, name: employee.name },
+      });
     }
 
     const employee = await createEmployee({
