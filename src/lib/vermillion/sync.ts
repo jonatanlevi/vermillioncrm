@@ -156,10 +156,29 @@ function parseChatMessages(raw: unknown) {
   });
 }
 
+async function fetchAuthMeta(
+  sb: NonNullable<ReturnType<typeof getIngestionClient>>,
+  userId: string
+) {
+  const { data, error } = await sb.auth.admin.getUserById(userId);
+  if (error || !data.user) return null;
+  const u = data.user;
+  const provider =
+    u.app_metadata?.provider ??
+    (Array.isArray(u.identities) && u.identities[0]?.provider) ??
+    null;
+  return {
+    created_at: u.created_at ?? null,
+    last_sign_in_at: u.last_sign_in_at ?? null,
+    provider: typeof provider === "string" ? provider : null,
+  };
+}
+
 async function fetchUserDetailFromSource(
   sb: NonNullable<ReturnType<typeof getIngestionClient>>,
   userId: string,
-  mk: string
+  mk: string,
+  options?: { includeAuth?: boolean }
 ) {
   const [
     profileRes,
@@ -171,6 +190,9 @@ async function fetchUserDetailFromSource(
     financialRes,
     gamesRes,
     gamesListRes,
+    dailyLogsRes,
+    gameLogRes,
+    authMeta,
   ] = await Promise.all([
     sb.from("profiles").select("ai_memory").eq("id", userId).maybeSingle(),
     sb.from("commitment").select("*").eq("user_id", userId).maybeSingle(),
@@ -180,7 +202,11 @@ async function fetchUserDetailFromSource(
       .eq("user_id", userId)
       .order("stamped_at", { ascending: false })
       .limit(60),
-    sb.from("onboarding_state").select("days_completed").eq("user_id", userId).maybeSingle(),
+    sb
+      .from("onboarding_state")
+      .select("days_completed, daily_answers")
+      .eq("user_id", userId)
+      .maybeSingle(),
     sb.from("chat_history").select("messages").eq("user_id", userId).maybeSingle(),
     sb
       .from("onboarding_answers")
@@ -194,30 +220,58 @@ async function fetchUserDetailFromSource(
       .eq("user_id", userId),
     sb
       .from("game_sessions")
-      .select("id, game_type, completed_at, duration_ms, score")
+      .select(
+        "id, day, month_key, game_key, game_score, started_at, completed_at, duration_ms, token_used"
+      )
       .eq("user_id", userId)
       .order("completed_at", { ascending: false })
       .limit(25),
+    sb
+      .from("daily_logs")
+      .select("id, day, coaching_answer, challenge_done, multiplier, logged_at")
+      .eq("user_id", userId)
+      .order("day", { ascending: true }),
+    sb.from("game_log").select("entries").eq("user_id", userId).maybeSingle(),
+    options?.includeAuth ? fetchAuthMeta(sb, userId) : Promise.resolve(null),
   ]);
 
   const c = commitmentRes.data as VermillionCommitment | null;
   const chatRaw = (chatRes.data as { messages?: unknown } | null)?.messages;
-  const daysCompleted =
-    (onboardingRes.data as { days_completed?: number[] } | null)?.days_completed ?? [];
+  const onboardingRow = onboardingRes.data as {
+    days_completed?: number[];
+    daily_answers?: Record<string, unknown>;
+  } | null;
+  const daysCompleted = onboardingRow?.days_completed ?? [];
 
   return {
     onboarding_answers: answersRes.data ?? [],
+    daily_answers: onboardingRow?.daily_answers ?? {},
     financial_data:
       (financialRes.data as { data?: Record<string, unknown> } | null)?.data ?? null,
     recent_stamps: (stampsRes.data ?? []) as VermillionDailyStamp[],
+    daily_logs: (dailyLogsRes.data ?? []) as {
+      id: string;
+      day: number;
+      coaching_answer: string | null;
+      challenge_done: boolean;
+      multiplier: number;
+      logged_at: string;
+    }[],
+    game_log_entries:
+      (gameLogRes.data as { entries?: Record<string, unknown> } | null)?.entries ?? {},
     game_sessions_count: gamesRes.count ?? 0,
     game_sessions: (gamesListRes.data ?? []) as {
       id: string;
-      game_type?: string;
+      day?: number;
+      month_key?: string;
+      game_key?: string;
+      game_score?: number;
+      started_at?: string;
       completed_at?: string;
       duration_ms?: number;
-      score?: number;
+      token_used?: boolean;
     }[],
+    auth_meta: authMeta,
     commitment: c,
     onboardingDays: daysCompleted.length,
     onboarding_days_completed: daysCompleted,
@@ -230,6 +284,79 @@ async function fetchUserDetailFromSource(
       (s: VermillionDailyStamp) => s.month_key === mk
     ),
   };
+}
+
+/** סימון נטישה מקומי כשהמשתמש נעלם מהמקור (לא מחיקת מנכ״ל) */
+export async function markAppUserChurnedFromSource(externalId: string) {
+  await db.appUser.updateMany({
+    where: { externalId, deletedAt: null, ceoDeletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  const active = await db.appUser.count({ where: { deletedAt: null } });
+  const meta = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
+  if (meta) {
+    await db.appSyncMeta.update({
+      where: { id: "singleton" },
+      data: { userCount: active },
+    });
+  }
+}
+
+async function authUserExists(
+  sb: NonNullable<ReturnType<typeof getIngestionClient>>,
+  userId: string
+): Promise<boolean> {
+  const { data, error } = await sb.auth.admin.getUserById(userId);
+  return !error && Boolean(data.user);
+}
+
+/**
+ * בדיקה קלה: משתמשים פעילים מקומיים מול Auth/פרופיל ב-Supabase.
+ * מריצים ברקע כשה-CRM פתוח — משלים Realtime.
+ */
+export async function reconcileActiveAppUsers(): Promise<{
+  ok: true;
+  checked: number;
+  churned: number;
+}> {
+  if (!isIngestionSourceConfigured()) {
+    return { ok: true, checked: 0, churned: 0 };
+  }
+  const sb = getIngestionClient();
+  if (!sb) return { ok: true, checked: 0, churned: 0 };
+
+  const active = await db.appUser.findMany({
+    where: { deletedAt: null, ceoDeletedAt: null },
+    select: { externalId: true },
+  });
+
+  let churned = 0;
+  for (const { externalId } of active) {
+    if (!(await authUserExists(sb, externalId))) {
+      await markAppUserChurnedFromSource(externalId);
+      churned++;
+      continue;
+    }
+    const { data } = await sb.from("profiles").select("id").eq("id", externalId).maybeSingle();
+    if (!data) {
+      await markAppUserChurnedFromSource(externalId);
+      churned++;
+    }
+  }
+
+  return { ok: true, checked: active.length, churned };
+}
+
+/** פרופילים שיש להם חשבון Auth פעיל (מחיקה באפליקציה מוחקת Auth) */
+async function filterProfilesWithActiveAuth(
+  sb: NonNullable<ReturnType<typeof getIngestionClient>>,
+  profiles: VermillionProfile[]
+): Promise<VermillionProfile[]> {
+  const out: VermillionProfile[] = [];
+  for (const p of profiles) {
+    if (await authUserExists(sb, p.id)) out.push(p);
+  }
+  return out;
 }
 
 /** רענון משתמש בודד מהמקור → עדכון AppUser מקומי */
@@ -252,11 +379,20 @@ export async function refreshAppUserFromSource(
     .maybeSingle();
 
   if (profileRes.error || !profileRes.data) {
-    return { ok: false, error: profileRes.error?.message ?? "משתמש לא נמצא במקור" };
+    await markAppUserChurnedFromSource(userId);
+    return {
+      ok: false,
+      error: profileRes.error?.message ?? "משתמש לא נמצא במקור — סומן כנטש ב-CRM",
+    };
+  }
+
+  if (!(await authUserExists(sb, userId))) {
+    await markAppUserChurnedFromSource(userId);
+    return { ok: false, error: "חשבון Auth נמחק באפליקציה — סומן כנטש ב-CRM" };
   }
 
   const profile = profileRes.data as VermillionProfile;
-  const detail = await fetchUserDetailFromSource(sb, userId, mk);
+  const detail = await fetchUserDetailFromSource(sb, userId, mk, { includeAuth: true });
   const commitment = detail.commitment;
 
   const stampByUser = new Map<string, { count: number; score: number; msSum: number; msN: number }>();
@@ -301,6 +437,7 @@ export async function refreshAppUserFromSource(
       detailJson: JSON.stringify(detail),
       syncedAt,
       joinedAt: row.joined_at ? new Date(row.joined_at) : null,
+      deletedAt: null,
     },
     update: {
       email: row.email,
@@ -320,6 +457,7 @@ export async function refreshAppUserFromSource(
       detailJson: JSON.stringify(detail),
       syncedAt,
       joinedAt: row.joined_at ? new Date(row.joined_at) : null,
+      deletedAt: null,
     },
   });
 
@@ -379,7 +517,8 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
 
-    const profiles = (profilesRes.data ?? []) as VermillionProfile[];
+    const allProfiles = (profilesRes.data ?? []) as VermillionProfile[];
+    const profiles = await filterProfilesWithActiveAuth(sb, allProfiles);
     const commitments = new Map(
       ((commitmentsRes.data ?? []) as VermillionCommitment[]).map((c) => [c.user_id, c])
     );
@@ -496,13 +635,21 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
       // סמן כנטשו משתמשים שלא חזרו מהמקור
       const activeIds = new Set(profiles.map((p) => p.id));
       await tx.appUser.updateMany({
-        where: { deletedAt: null, externalId: { notIn: [...activeIds] } },
+        where: {
+          deletedAt: null,
+          ceoDeletedAt: null,
+          externalId: { notIn: [...activeIds] },
+        },
         data: { deletedAt: syncedAt },
       });
 
-      // אפס deletedAt למי שחזר (הוחזר לאחר מחיקה)
+      // אפס deletedAt למי שחזר (הוחזר לאחר מחיקה) — לא למי שנמחק ידנית ע״י מנכ״ל
       await tx.appUser.updateMany({
-        where: { deletedAt: { not: null }, externalId: { in: [...activeIds] } },
+        where: {
+          ceoDeletedAt: null,
+          deletedAt: { not: null },
+          externalId: { in: [...activeIds] },
+        },
         data: { deletedAt: null },
       });
 

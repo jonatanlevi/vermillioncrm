@@ -154,26 +154,60 @@ model AppUser {
   syncedAt       DateTime  @default(now())
   joinedAt       DateTime?
   deletedAt      DateTime?
+  /// מחיקה ידנית על ידי מנכ״ל ב-CRM (נשמר בעותק מקומי; Supabase נמחק)
+  ceoDeletedAt   DateTime?
 }
 
 model AgentRun {
-  id         String    @id @default(cuid())
-  agentId    String
-  employeeId String?
-  employee   Employee? @relation(fields: [employeeId], references: [id])
-  input      String
-  output     String?
-  status     String    @default("PENDING")
-  provider   String    @default("grok")
-  error      String?
-  startedAt  DateTime  @default(now())
-  finishedAt DateTime?
+  id           String         @id @default(cuid())
+  agentId      String
+  employeeId   String?
+  employee     Employee?      @relation(fields: [employeeId], references: [id])
+  input        String
+  output       String?
+  status       String         @default("PENDING")
+  provider     String         @default("grok")
+  model        String?
+  trigger      String         @default("manual")
+  metadata     String         @default("{}")
+  inputTokens  Int            @default(0)
+  outputTokens Int            @default(0)
+  costUsd      Float          @default(0)
+  error        String?
+  startedAt    DateTime       @default(now())
+  finishedAt   DateTime?
+  steps        AgentRunStep[]
+}
+
+/// שלב בודד בריצת סוכן — הסבר, מודל, טוקנים ועלות
+model AgentRunStep {
+  id            String    @id @default(cuid())
+  runId         String
+  run           AgentRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepIndex     Int
+  kind          String
+  title         String
+  rationale     String
+  inputPreview  String?
+  outputPreview String?
+  provider      String?
+  model         String?
+  inputTokens   Int       @default(0)
+  outputTokens  Int       @default(0)
+  costUsd       Float     @default(0)
+  status        String    @default("OK")
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  @@index([runId, stepIndex])
 }
 
 /// צוות פנימי — נפרד ממשתמשי האפליקציה (AppUser)
 model Employee {
   id            String    @id @default(cuid())
   email         String    @unique
+  /// שם משתמש להתחברות ל-CRM (ייחודי)
+  username      String?   @unique
   name          String
   /// תפקיד עבודה (מכירות, שיווק…) — לא הרשאות CRM
   role          String    @default("SALES")
@@ -181,6 +215,8 @@ model Employee {
   accessRole    String    @default("EMPLOYEE")
   passwordHash  String?
   permissions   String    @default("{}")
+  /// APPROVED | PENDING | REJECTED — הרשמה עצמית ממתינה לאישור מנכ״ל
+  approvalStatus String   @default("APPROVED")
   isActive      Boolean   @default(true)
   department    String?
   phone         String?
@@ -199,6 +235,21 @@ model Employee {
   campaigns        Campaign[]
   agentRuns        AgentRun[]
   whatsappMessages WhatsappMessage[]
+  ceoNotifications CeoNotification[]
+}
+
+/// התראות למנכ״ל (הרשמת עובד ממתינה וכו׳)
+model CeoNotification {
+  id         String    @id @default(cuid())
+  type       String
+  title      String
+  message    String
+  employeeId String?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payload    String    @default("{}")
+  readAt     DateTime?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 /// יומן נוכחות יומי

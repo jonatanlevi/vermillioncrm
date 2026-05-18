@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { auth } from "@/auth";
 import { getVermillionUserDetail, formatTimer } from "@/lib/vermillion/queries";
 import { IngestionGate } from "./ingestion-gate";
 import { UserAdminActions } from "./user-admin-actions";
 
 export async function VermillionUserDetail({ userId }: { userId: string }) {
-  const user = await getVermillionUserDetail(userId);
+  const [user, session] = await Promise.all([getVermillionUserDetail(userId), auth()]);
+  const isCeo = session?.user?.role === "CEO";
 
   if (!user) {
     return (
@@ -26,6 +28,21 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
       <header>
         <h1 className="text-2xl font-bold">{user.name || user.email}</h1>
         <p className="text-sm text-[var(--muted)]">{user.id}</p>
+        {user.ceoDeletedAt && (
+          <p className="mt-2 rounded-lg border border-red-900/40 bg-red-950/30 px-3 py-2 text-sm text-red-200">
+            נמחק על ידי מנכ״ל ·{" "}
+            {new Date(user.ceoDeletedAt).toLocaleString("he-IL")}
+            {" · "}
+            <Link href="/vermillion/churned" className="underline">
+              רשימת לא פעילים
+            </Link>
+          </p>
+        )}
+        {user.deletedAt && !user.ceoDeletedAt && (
+          <p className="mt-2 rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300">
+            משתמש נטש · {new Date(user.deletedAt).toLocaleString("he-IL")}
+          </p>
+        )}
         <p className="mt-1 text-xs text-[var(--muted)]">
           «רענן מהאפליקציה» מעדכן צ׳אט, משחקים וזיכרון AI
         </p>
@@ -35,6 +52,8 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
         userId={user.id}
         email={user.email}
         name={user.name || user.first_name}
+        isCeo={isCeo}
+        isRemoved={user.deletedAt != null}
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -53,6 +72,31 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
         <Card title="V-Coins" value={String(user.v_coins ?? 0)} />
         <Card title="אזור זמן" value={user.timezone ?? "UTC"} />
       </div>
+
+      {user.auth_meta && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
+          <h2 className="mb-3 font-semibold">התחברות (Auth)</h2>
+          <dl className="grid gap-2 text-sm sm:grid-cols-2">
+            <Item
+              label="נרשם"
+              value={
+                user.auth_meta.created_at
+                  ? new Date(user.auth_meta.created_at).toLocaleString("he-IL")
+                  : "—"
+              }
+            />
+            <Item
+              label="התחברות אחרונה"
+              value={
+                user.auth_meta.last_sign_in_at
+                  ? new Date(user.auth_meta.last_sign_in_at).toLocaleString("he-IL")
+                  : "—"
+              }
+            />
+            <Item label="ספק" value={user.auth_meta.provider ?? "—"} />
+          </dl>
+        </section>
+      )}
 
       {c && (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -208,19 +252,23 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
                 <th className="pb-2 text-right">הושלם</th>
                 <th className="pb-2 text-right">משך (ms)</th>
                 <th className="pb-2 text-right">ניקוד</th>
+                <th className="pb-2 text-right">טוקן</th>
               </tr>
             </thead>
             <tbody>
               {user.game_sessions.map((g) => (
                 <tr key={g.id} className="border-t border-[var(--border)]/40">
-                  <td className="py-2">{g.game_type ?? "—"}</td>
+                  <td className="py-2">{g.game_key ?? g.game_type ?? "—"}</td>
                   <td className="py-2">
                     {g.completed_at
                       ? new Date(g.completed_at).toLocaleString("he-IL")
                       : "—"}
                   </td>
                   <td className="py-2">{g.duration_ms ?? "—"}</td>
-                  <td className="py-2">{g.score ?? "—"}</td>
+                  <td className="py-2">{g.game_score ?? g.score ?? "—"}</td>
+                  <td className="py-2">
+                    {g.token_used === true ? "נוצל" : g.token_used === false ? "לא נוצל" : "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -232,6 +280,34 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <h2 className="mb-3 font-semibold">ימי אונבורדינג שהושלמו</h2>
           <p className="text-sm">{user.onboarding_days_completed.join(", ")}</p>
+        </section>
+      )}
+
+      {user.daily_logs && user.daily_logs.length > 0 && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 overflow-x-auto">
+          <h2 className="mb-3 font-semibold">ימי תוכנית 9–30 ({user.daily_logs.length})</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-[var(--muted)]">
+                <th className="pb-2 text-right">יום</th>
+                <th className="pb-2 text-right">אתגר</th>
+                <th className="pb-2 text-right">מכפיל</th>
+                <th className="pb-2 text-right">אימון</th>
+              </tr>
+            </thead>
+            <tbody>
+              {user.daily_logs.map((log) => (
+                <tr key={log.id} className="border-t border-[var(--border)]/40">
+                  <td className="py-2">{log.day}</td>
+                  <td className="py-2">{log.challenge_done ? "✓" : "—"}</td>
+                  <td className="py-2">{log.multiplier}</td>
+                  <td className="py-2 max-w-xs truncate">
+                    {log.coaching_answer?.slice(0, 80) ?? "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
       )}
 

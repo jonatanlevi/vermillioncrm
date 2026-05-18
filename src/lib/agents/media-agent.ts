@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { getAIProvider } from "@/lib/ai";
+import { generateImageTracked } from "@/lib/ai/complete";
 import type { AgentContext, AgentResult } from "@/lib/types/agents";
 import { BaseAgent } from "./base-agent";
 
@@ -34,11 +34,22 @@ Output JSON: { type: "IMAGE"|"VIDEO", prompt, caption }.`;
     });
 
     try {
-      const ai = getAIProvider();
       let url: string | null = null;
 
-      if (type === "IMAGE" && ai.generateImage) {
-        const result = await ai.generateImage({ prompt });
+      if (type === "IMAGE") {
+        await this.logStep(
+          "PREP",
+          "הכנת פרומפט מדיה",
+          "פירוק תשובת ה-LLM לפרומפט ייצוג ויזואלי.",
+          { outputPreview: prompt.slice(0, 300) }
+        );
+        const result = await generateImageTracked(
+          { prompt },
+          {
+            title: "יצירת תמונה (API)",
+            rationale: "קריאה ל-API ייצור תמונה לפי הפרומפט שאושר בשלב הקודם.",
+          }
+        );
         url = result.url;
       }
 
@@ -47,7 +58,7 @@ Output JSON: { type: "IMAGE"|"VIDEO", prompt, caption }.`;
         data: {
           status: url ? "READY" : "PENDING",
           url,
-          metadata: JSON.stringify({ caption: raw.slice(0, 300), provider: ai.name }),
+          metadata: JSON.stringify({ caption: raw.slice(0, 300) }),
         },
       });
 

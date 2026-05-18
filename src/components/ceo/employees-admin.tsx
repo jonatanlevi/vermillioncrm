@@ -9,6 +9,9 @@ import {
   type PermissionKey,
 } from "@/lib/auth/permissions";
 import type { CrmEmployeeRow } from "@/lib/ceo/employees-auth";
+import { EMPLOYEE_ROLES } from "@/lib/ceo/constants";
+import Link from "next/link";
+import { PasswordField } from "@/components/auth/password-field";
 
 type Props = {
   employees: CrmEmployeeRow[];
@@ -28,19 +31,37 @@ export function EmployeesAdmin({ employees: initial }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [jobRole, setJobRole] = useState("SALES");
   const [perms, setPerms] = useState(emptyPerms);
+
+  const passwordsMatch =
+    password.length >= 8 &&
+    passwordConfirm.length >= 8 &&
+    password === passwordConfirm;
 
   async function createEmployee(e: React.FormEvent) {
     e.preventDefault();
+    if (password !== passwordConfirm) {
+      setError("הסיסמאות אינן תואמות");
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/ceo/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, permissions: perms, crmAccess: true }),
+        body: JSON.stringify({
+          name,
+          username,
+          password,
+          jobRole,
+          permissions: perms,
+          crmAccess: true,
+        }),
       });
       const data = await res.json();
       if (!data.ok) {
@@ -48,8 +69,10 @@ export function EmployeesAdmin({ employees: initial }: Props) {
         return;
       }
       setName("");
-      setEmail("");
+      setUsername("");
       setPassword("");
+      setPasswordConfirm("");
+      setJobRole("SALES");
       setPerms(emptyPerms());
       router.refresh();
     } catch {
@@ -110,7 +133,18 @@ export function EmployeesAdmin({ employees: initial }: Props) {
   return (
     <div className="space-y-8" dir="rtl">
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h2 className="mb-4 text-lg font-semibold">הוסף עובד עם גישה ל-CRM</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">הוסף עובד — כניסה מיידית</h2>
+          <Link
+            href="/register?mode=employee"
+            className="text-xs text-[var(--accent)] hover:underline"
+          >
+            טופס מורחב →
+          </Link>
+        </div>
+        <p className="mb-4 text-xs text-[var(--muted)]">
+          עובד שנרשם בעצמו ב-/register ממתין לאישור ב«אישור הרשמות». כאן — נכנס מיד ללא המתנה.
+        </p>
         <form onSubmit={createEmployee} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-xs text-[var(--muted)]">
@@ -123,26 +157,45 @@ export function EmployeesAdmin({ employees: initial }: Props) {
               />
             </label>
             <label className="block text-xs text-[var(--muted)]">
-              אימייל *
+              שם משתמש *
               <input
                 required
-                type="email"
+                type="text"
                 dir="ltr"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="off"
+                pattern="[a-zA-Z0-9._-]{3,32}"
+                title="3–32 תווים: אותיות, מספרים, נקודה, מקף, קו תחתון"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className={inputClass}
               />
             </label>
+            <PasswordField
+              label="סיסמה *"
+              value={password}
+              onChange={setPassword}
+            />
+            <PasswordField
+              label="אימות סיסמה *"
+              value={passwordConfirm}
+              onChange={setPasswordConfirm}
+              matchWith={password}
+            />
             <label className="block text-xs text-[var(--muted)] sm:col-span-2">
-              סיסמה זמנית *
-              <input
-                required
-                type="password"
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+              תפקיד בעסק *
+              <select
+                value={jobRole}
+                onChange={(e) => setJobRole(e.target.value)}
                 className={inputClass}
-              />
+              >
+                {Object.entries(EMPLOYEE_ROLES)
+                  .filter(([k]) => k !== "CEO")
+                  .map(([k, label]) => (
+                    <option key={k} value={k}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
             </label>
           </div>
 
@@ -150,7 +203,7 @@ export function EmployeesAdmin({ employees: initial }: Props) {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !passwordsMatch}
             className="rounded-lg bg-[var(--accent)] px-5 py-2 text-sm text-white disabled:opacity-50"
           >
             הוסף עובד
@@ -165,7 +218,7 @@ export function EmployeesAdmin({ employees: initial }: Props) {
           <thead>
             <tr className="border-b border-[var(--border)] text-[var(--muted)]">
               <th className="px-3 py-3 text-right">שם</th>
-              <th className="px-3 py-3 text-right">אימייל</th>
+              <th className="px-3 py-3 text-right">שם משתמש</th>
               <th className="px-3 py-3 text-right">סטטוס</th>
               <th className="px-3 py-3 text-right">פעולות</th>
             </tr>
@@ -247,8 +300,8 @@ function EmployeeRow({
   return (
     <tr className="border-b border-[var(--border)]/40">
       <td className="px-3 py-2 font-medium">{emp.name}</td>
-      <td className="px-3 py-2 text-xs" dir="ltr">
-        {emp.email}
+      <td className="px-3 py-2 font-mono text-xs" dir="ltr">
+        {emp.username}
       </td>
       <td className="px-3 py-2">
         <span className={emp.isActive ? "text-green-400" : "text-[var(--muted)]"}>
@@ -276,16 +329,12 @@ function EmployeeRow({
         {editing && (
           <div className="mt-3 space-y-3 rounded-lg border border-[var(--border)] bg-black/20 p-3">
             <PermissionGrid values={editPerms} onChange={setEditPerms} />
-            <label className="block text-xs text-[var(--muted)]">
-              סיסמה חדשה (אופציונלי)
-              <input
-                type="password"
-                minLength={8}
-                value={editPassword}
-                onChange={(e) => setEditPassword(e.target.value)}
-                className={inputClass}
-              />
-            </label>
+            <PasswordField
+              label="סיסמה חדשה (אופציונלי)"
+              value={editPassword}
+              onChange={setEditPassword}
+              required={false}
+            />
             <button
               type="button"
               disabled={loading}

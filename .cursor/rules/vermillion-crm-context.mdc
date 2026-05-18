@@ -130,19 +130,50 @@ src/lib/agents/*                  # סוכנים לפי דומיין
 
 ## מה חסר (❌)
 
-- Auth + הרשאות CEO/עובד
-- `.env` מלא (מפתח יניקה, XAI)
-- אינטגרציות אמיתיות (WhatsApp, פרסום רשתות)
-- סוכן `ceo` AI מלא
+- אינטגרציות אמיתיות (WhatsApp, פרסום רשתות, Stripe/RevenueCat)
+- סוכן `ceo` AI מלא (MRR, CAC)
 - Cron, deploy production, PostgreSQL
+- Mixpanel / אירועי מוצר גלובליים
+
+## Auth + מנכ״ל (✅ נבנה)
+
+- NextAuth: `CEO` / `EMPLOYEE`, `/login`, `/register` (אישור מנכ״ל)
+- מחיקת משתמש אפליקציה: רק מנכ״ל → Supabase Auth + `ceoDeletedAt`
+- `/vermillion/churned` — נטשו vs נמחקו ע״י מנכ״ל
+- `/ceo/ai-operations` — תיעוד ריצות AI + שלבים + עלות
+
+---
+
+## אסטרטגיית נתונים ל-AI (מנכ״ל — מאי 2026)
+
+**חזון:** חברה גלובלית — AI רואה התנהגות + כלכלה + סיכונים.
+
+### שכבות מידע
+| שכבה | סטטוס |
+|------|--------|
+| משתמש בודד (פרופיל, DNA, Stamps, צ׳אט, משחקים) | ✅ חלקי |
+| ימים 9–30 (`daily_logs`), `daily_answers`, `game_log` | 🔄 Phase 1 (יניקה ל-`detailJson`) |
+| Auth (`last_sign_in_at`, הרשמה) | 🔄 Phase 1 (ברענון משתמש בודד) |
+| קוהורט / at-risk / הונאה | 🔄 Phase 1 (`getVermillionAnalyticsSnapshot`) |
+| MRR, LTV, CAC | ❌ אין תשלומים באפליקציה עדיין |
+
+### באג ידוע שתוקן
+- `game_sessions`: בסכמה `game_key`, `game_score`, `token_used` — לא `game_type`/`score`
+
+### Roadmap יניקה
+1. **Phase 1 (עכשיו):** daily_logs, daily_answers, game_log, game_sessions תקין, Auth בפרטים, snapshot מורחב
+2. **Phase 2:** Stripe/RevenueCat → Supabase → CRM
+3. **Phase 3:** `user_events`, data warehouse
+
+**מדריך למנכ״ל (לא מתכנת):** `docs/CEO_HANDS_GUIDE.md`
 
 ---
 
 ## Supabase (רק ליניקה — לא ב-UI)
 
 - Project: `hegbvrvmgvmmbigfpqax`
-- טבלאות: `profiles`, `commitment` (טיימר DNA), `daily_stamps`, `onboarding_*`, `chat_history`, `prize_config`, `operational_costs`, …
-- CRM **לא כותב** `daily_stamps` — רק קורא בזמן יניקה
+- טבלאות: `profiles`, `commitment`, `daily_stamps`, `onboarding_*`, `chat_history`, `financial_data`, `game_sessions`, `daily_logs`, `game_log`, `prize_config`, `operational_costs`
+- CRM **לא כותב** ל-Supabase — רק קורא בזמן יניקה (מלבד מחיקת מנכ״ל → Auth)
 
 ---
 

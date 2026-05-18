@@ -9,7 +9,16 @@ export async function GET() {
   const realtime = getRealtimeSyncStatus();
 
   return NextResponse.json({
-    ...sync,
-    realtime,
+    ingestionConfigured: sync.ingestionConfigured,
+    lastSyncAt: sync.lastSyncAt?.toISOString() ?? null,
+    lastSyncStatus: sync.lastSyncStatus,
+    lastSyncError: sync.lastSyncError,
+    userCount: sync.userCount,
+    activeUserCount: sync.activeUserCount,
+    dataRevision: sync.dataRevision,
+    realtime: {
+      ...realtime,
+      lastEventAt: realtime.lastEventAt?.toISOString() ?? null,
+    },
   });
 }

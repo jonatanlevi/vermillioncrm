@@ -1,6 +1,7 @@
 import { getCeoDb } from "./db-access";
 import { getAppProductSnapshot, type AppProductSnapshot } from "./product-snapshot";
 import { ensureDemoTeam } from "./seed";
+import { listPendingSignups } from "./signup-approvals";
 
 function monthKey(d = new Date()) {
   return d.toISOString().slice(0, 7);
@@ -8,6 +9,18 @@ function monthKey(d = new Date()) {
 
 function startOfMonth(d = new Date()) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function roleLabelFromQueries(role: string) {
+  const labels: Record<string, string> = {
+    CEO: "מנכ״ל",
+    SALES: "מכירות",
+    MARKETING: "שיווק",
+    FINANCE: "כספים",
+    SUPPORT: "תמיכה",
+    OPS: "תפעול",
+  };
+  return labels[role] ?? role;
 }
 
 function daysAgo(n: number) {
@@ -43,7 +56,7 @@ export type CeoDashboard = {
   whatsappMonth: number;
   agentRunsMonth: number;
   team: EmployeePerformanceRow[];
-  alerts: { type: string; message: string; employeeId?: string }[];
+  alerts: { type: string; message: string; employeeId?: string; href?: string }[];
   recentActivity: {
     id: string;
     employeeName: string;
@@ -163,6 +176,15 @@ export async function getCeoDashboard(): Promise<CeoDashboard> {
   );
 
   const alerts: CeoDashboard["alerts"] = [];
+  const pendingSignups = await listPendingSignups();
+  for (const p of pendingSignups) {
+    alerts.push({
+      type: "signup_pending",
+      message: `בקשת הרשמה: ${p.name} (@${p.username}) — ${roleLabelFromQueries(p.role)}`,
+      employeeId: p.id,
+      href: "/ceo/approvals",
+    });
+  }
   const threeDaysAgo = daysAgo(3);
 
   for (const row of team) {
@@ -186,7 +208,9 @@ export async function getCeoDashboard(): Promise<CeoDashboard> {
   return {
     monthKey: mk,
     product,
-    activeEmployees: employees.filter((e) => e.status === "ACTIVE").length,
+    activeEmployees: employees.filter(
+      (e) => e.status === "ACTIVE" && e.approvalStatus === "APPROVED"
+    ).length,
     openDeals,
     wonDealsMonth,
     salesAmountMonth: salesAgg._sum.amount ?? 0,

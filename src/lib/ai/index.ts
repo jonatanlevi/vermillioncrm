@@ -1,6 +1,6 @@
 import { ClaudeProvider } from "./claude";
 import { GrokProvider } from "./grok";
-import type { AIProvider, AIProviderName } from "./types";
+import type { AIProvider, AIProviderName, CompletionResult } from "./types";
 
 export const AI_NOT_CONFIGURED_MESSAGE =
   "AI לא מוגדר — הוסף XAI_API_KEY או ANTHROPIC_API_KEY ל-.env";
@@ -14,13 +14,13 @@ function hasApiKey(value: string | undefined): boolean {
 class UnconfiguredAIProvider implements AIProvider {
   readonly name = "grok" as const;
 
-  async complete(): Promise<string> {
+  async complete(): Promise<CompletionResult> {
     throw new Error(AI_NOT_CONFIGURED_MESSAGE);
   }
 }
 
 /** בוחר provider עם fallback: grok ללא מפתח → claude */
-function resolveProviderName(force?: AIProviderName): AIProviderName | "none" {
+export function resolveProviderName(force?: AIProviderName): AIProviderName | "none" {
   if (force === "grok") {
     if (hasApiKey(process.env.XAI_API_KEY)) return "grok";
     if (hasApiKey(process.env.ANTHROPIC_API_KEY)) return "claude";
@@ -66,3 +66,5 @@ export function getAIProvider(force?: AIProviderName): AIProvider {
 }
 
 export * from "./types";
+export { completeTracked, completeRaw, generateImageTracked } from "./complete";
+export { formatUsd, formatUsdIls, estimateLlmCostUsd } from "./cost";

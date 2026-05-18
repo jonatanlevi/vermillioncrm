@@ -16,20 +16,24 @@ const NAV_AGENTS: AgentId[] = [
 
 export type SidebarNavProps = {
   userName?: string | null;
+  userEmail?: string | null;
   role: string;
   permissions: Record<string, boolean>;
   showHome: boolean;
   showCeo: boolean;
   showEmployeeAdmin: boolean;
+  pendingApprovals?: number;
 };
 
 export function Sidebar({
   userName,
+  userEmail,
   role,
   permissions,
   showHome,
   showCeo,
   showEmployeeAdmin,
+  pendingApprovals = 0,
 }: SidebarNavProps) {
   const pathname = usePathname();
   const isCeo = role === "CEO";
@@ -43,14 +47,18 @@ export function Sidebar({
           <span className="text-lg font-bold text-[var(--accent)]">VerMillion</span>
           <span className="mt-0.5 block text-xs text-[var(--muted)]">מרכז פיקוד עסקי</span>
         </Link>
-        {userName && (
-          <p className="mt-2 truncate text-xs text-[var(--muted)]">
-            {userName}
-            <span className="mr-1 text-[var(--accent)]">
-              {isCeo ? " · מנכ״ל" : " · עובד"}
+        <p className="mt-2 text-xs">
+          {isCeo ? (
+            <span className="inline-block rounded-md bg-[var(--accent-dim)] px-2 py-0.5 font-semibold text-white">
+              מנכ״ל
             </span>
-          </p>
-        )}
+          ) : (
+            <span className="text-[var(--muted)]">עובד</span>
+          )}
+          <span className="mr-1.5 truncate text-[var(--muted)]">
+            {userName || userEmail || "מחובר"}
+          </span>
+        </p>
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
@@ -80,16 +88,28 @@ export function Sidebar({
               <span className="font-medium">מרכז מנכ״ל</span>
             </Link>
             {pathname.startsWith("/ceo") && (
-              <Link
-                href="/ceo/attendance"
-                className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
-                  pathname.startsWith("/ceo/attendance")
-                    ? "text-white"
-                    : "text-[var(--muted)] hover:text-white"
-                }`}
-              >
-                יומן נוכחות
-              </Link>
+              <>
+                <Link
+                  href="/ceo/attendance"
+                  className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                    pathname.startsWith("/ceo/attendance")
+                      ? "text-white"
+                      : "text-[var(--muted)] hover:text-white"
+                  }`}
+                >
+                  יומן נוכחות
+                </Link>
+                <Link
+                  href="/ceo/ai-operations"
+                  className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                    pathname.startsWith("/ceo/ai-operations")
+                      ? "text-white"
+                      : "text-[var(--muted)] hover:text-white"
+                  }`}
+                >
+                  מרכז AI — תיעוד
+                </Link>
+              </>
             )}
           </div>
         )}
@@ -126,16 +146,33 @@ export function Sidebar({
 
       <div className="space-y-2 border-t border-[var(--border)] p-3">
         {showEmployeeAdmin && (
-          <Link
-            href="/ceo/employees"
-            className={`block rounded-lg px-3 py-2 text-xs ${
-              pathname.startsWith("/ceo/employees")
-                ? "bg-[var(--accent-dim)] text-white"
-                : "text-[var(--muted)] hover:bg-white/5"
-            }`}
-          >
-            ניהול עובדים
-          </Link>
+          <>
+            <Link
+              href="/ceo/approvals"
+              className={`flex items-center justify-between rounded-lg px-3 py-2 text-xs ${
+                pathname.startsWith("/ceo/approvals")
+                  ? "bg-amber-900/40 text-amber-100"
+                  : "text-[var(--muted)] hover:bg-white/5"
+              }`}
+            >
+              <span>אישור הרשמות</span>
+              {pendingApprovals > 0 && (
+                <span className="rounded-full bg-amber-600 px-1.5 py-0.5 text-[10px] text-white">
+                  {pendingApprovals}
+                </span>
+              )}
+            </Link>
+            <Link
+              href="/ceo/employees"
+              className={`block rounded-lg px-3 py-2 text-xs ${
+                pathname.startsWith("/ceo/employees")
+                  ? "bg-[var(--accent-dim)] text-white"
+                  : "text-[var(--muted)] hover:bg-white/5"
+              }`}
+            >
+              ניהול עובדים
+            </Link>
+          </>
         )}
         <p className="text-xs text-[var(--muted)]">AI: Grok → Claude</p>
         <button

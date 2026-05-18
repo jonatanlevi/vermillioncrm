@@ -2,9 +2,11 @@
  * האזנה לשינויים ב-Supabase (Realtime) → רענון משתמש ב-CRM.
  * דורש: Realtime מופעל על הטבלאות בדשבורד Supabase.
  */
-import { db } from "@/lib/db";
 import { getIngestionClient, isIngestionSourceConfigured } from "./app-source";
-import { refreshAppUserFromSource } from "@/lib/vermillion/sync";
+import {
+  markAppUserChurnedFromSource,
+  refreshAppUserFromSource,
+} from "@/lib/vermillion/sync";
 
 const DEBOUNCE_MS = 2_000;
 
@@ -17,6 +19,8 @@ const WATCH_TABLES = [
   "chat_history",
   "financial_data",
   "game_sessions",
+  "daily_logs",
+  "game_log",
 ] as const;
 
 type ChangePayload = {
@@ -27,6 +31,8 @@ type ChangePayload = {
 };
 
 let started = false;
+let channelRef: ReturnType<NonNullable<ReturnType<typeof getIngestionClient>>["channel"]> | null =
+  null;
 let channelStatus: "off" | "connecting" | "live" | "error" = "off";
 let lastEventAt: Date | null = null;
 let lastError: string | null = null;
@@ -48,19 +54,8 @@ function userIdFromPayload(payload: ChangePayload): string | null {
   return typeof uid === "string" ? uid : null;
 }
 
-async function removeLocalUser(externalId: string) {
-  await db.appUser.updateMany({
-    where: { externalId, deletedAt: null },
-    data: { deletedAt: new Date() },
-  });
-  const active = await db.appUser.count({ where: { deletedAt: null } });
-  const meta = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
-  if (meta) {
-    await db.appSyncMeta.update({
-      where: { id: "singleton" },
-      data: { userCount: active },
-    });
-  }
+function removeLocalUser(externalId: string) {
+  void markAppUserChurnedFromSource(externalId);
 }
 
 function scheduleUserRefresh(userId: string) {
@@ -75,6 +70,13 @@ function scheduleUserRefresh(userId: string) {
         const result = await refreshAppUserFromSource(userId);
         if (!result.ok) {
           console.warn("[realtime-sync] refresh failed:", userId, result.error);
+          if (
+            result.error.includes("נטש") ||
+            result.error.includes("Auth נמחק") ||
+            result.error.includes("לא נמצא")
+          ) {
+            void markAppUserChurnedFromSource(userId);
+          }
         }
       } catch (e) {
         console.warn("[realtime-sync] refresh error:", userId, e);
@@ -97,6 +99,7 @@ function handleChange(payload: ChangePayload) {
 }
 
 export function getRealtimeSyncStatus() {
+  ensureRealtimeSyncStarted();
   return {
     enabled: realtimeEnabled() && isIngestionSourceConfigured(),
     status: channelStatus,
@@ -104,6 +107,12 @@ export function getRealtimeSyncStatus() {
     lastError,
     tables: WATCH_TABLES,
   };
+}
+
+/** מפעיל האזנה Realtime אם עדיין לא רצה (נדרש אחרי HMR / בלי instrumentation) */
+export function ensureRealtimeSyncStarted() {
+  if (started) return;
+  startRealtimeSync();
 }
 
 export function startRealtimeSync() {
@@ -152,9 +161,17 @@ export function startRealtimeSync() {
     } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
       channelStatus = "error";
       lastError = err?.message ?? status;
-      console.error("[realtime-sync]", lastError);
+      console.error("[realtime-sync] channel error:", lastError);
     } else if (status === "CLOSED") {
       channelStatus = "off";
     }
   });
+
+  setTimeout(() => {
+    if (channelStatus === "connecting") {
+      channelStatus = "error";
+      lastError =
+        "Realtime לא התחבר — בדשבורד Supabase: Database → Replication → הפעל Realtime לטבלאות profiles, commitment, daily_stamps וכו׳";
+    }
+  }, 20_000);
 }

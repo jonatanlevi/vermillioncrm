@@ -48,9 +48,15 @@ export function AppSyncPanel({
   return (
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-sm">
       <p className="font-semibold">יניקת נתונים מאפליקציית VerMillion</p>
+      <p className="mt-2 rounded-lg border border-[var(--border)]/60 bg-black/20 px-3 py-2 text-xs text-[var(--muted)]">
+        <strong className="text-white">כל כמה זמן?</strong> שינוי ב-Supabase → עד כמה שניות (Realtime).
+        בעמוד מוצר בלבד: בדיקה כל ~30 שנ׳, רענון מסך רק אם הנתונים השתנו.
+        סנכרון מלא — בלחיצה על הכפתור למטה.
+      </p>
       <p className="mt-1 text-[var(--muted)]">
-        ה-CRM שומר עותק מקומי בלבד. עם Realtime מופעל ב-Supabase — שינויים (הרשמה,
-        Stamp, צ׳אט) מסתנכרנים אוטומטית תוך כמה שניות.
+        כיוון הסנכרון: <strong className="text-white">מ-Supabase → CRM</strong> (לא הפוך).
+        מחיקה באפליקציה → נעלם מ-Auth ב-Supabase → ה-CRM מסמן «נטש» (אוטומטית או אחרי «סנכרן עכשיו»).
+        מחיקת מנכ״ל מה-CRM שולחת מחיקה ל-Supabase ושומרת ארכיון מקומי.
       </p>
       <p className="mt-2 text-xs text-green-400/90">
         האזנה לשינויים: פעילה כשהשרת רץ (ברירת מחדל). לכיבוי:{" "}

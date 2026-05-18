@@ -20,9 +20,13 @@ export async function deleteAppUserEverywhere(
     return { ok: false, error: error.message };
   }
 
-  await db.appUser.deleteMany({ where: { externalId } });
+  const removedAt = new Date();
+  await db.appUser.updateMany({
+    where: { externalId },
+    data: { deletedAt: removedAt, ceoDeletedAt: removedAt },
+  });
 
-  const remaining = await db.appUser.count();
+  const remaining = await db.appUser.count({ where: { deletedAt: null } });
   const meta = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
   if (meta) {
     await db.appSyncMeta.update({

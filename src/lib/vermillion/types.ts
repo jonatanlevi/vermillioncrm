@@ -84,20 +84,47 @@ export interface VermillionChatMessage {
 
 export interface VermillionGameSession {
   id: string;
+  day?: number;
+  month_key?: string;
+  game_key?: string;
+  /** @deprecated use game_key */
   game_type?: string;
+  started_at?: string;
   completed_at?: string;
   duration_ms?: number;
+  game_score?: number;
+  /** @deprecated use game_score */
   score?: number;
+  token_used?: boolean;
+}
+
+export interface VermillionDailyLog {
+  id: string;
+  day: number;
+  coaching_answer: string | null;
+  challenge_done: boolean;
+  multiplier: number;
+  logged_at: string;
+}
+
+export interface VermillionAuthMeta {
+  created_at: string | null;
+  last_sign_in_at: string | null;
+  provider: string | null;
 }
 
 export interface VermillionUserDetail extends VermillionUserRow {
   syncedAt?: Date;
   onboarding_answers: { day: number; question_key: string; answer: string | null }[];
+  daily_answers?: Record<string, unknown>;
   financial_data: Record<string, unknown> | null;
   recent_stamps: VermillionDailyStamp[];
+  daily_logs: VermillionDailyLog[];
+  game_log_entries?: Record<string, unknown>;
   game_sessions_count: number;
   chat_messages: VermillionChatMessage[];
   ai_memory: { insights?: string[]; sessionCount?: number } | null;
   onboarding_days_completed: number[];
   game_sessions: VermillionGameSession[];
+  auth_meta?: VermillionAuthMeta | null;
 }

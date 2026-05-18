@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { AgentId } from "@/lib/types/agents";
 import { AGENT_META } from "@/lib/types/agents";
@@ -25,6 +26,7 @@ export function AgentPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function run(auto = false) {
@@ -46,6 +48,7 @@ export function AgentPanel({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "שגיאה");
       setResult(data.message ?? JSON.stringify(data, null, 2));
+      if (typeof data.runId === "string") setLastRunId(data.runId);
       if (agentId === "campaigns" && metadata?.network) {
         window.dispatchEvent(
           new CustomEvent("cha:campaign-updated", {
@@ -107,8 +110,21 @@ export function AgentPanel({
         </div>
       )}
       {result && (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm whitespace-pre-wrap" dir="rtl">
-          {result}
+        <div className="space-y-2">
+          <div
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm whitespace-pre-wrap"
+            dir="rtl"
+          >
+            {result}
+          </div>
+          {lastRunId && (
+            <Link
+              href={`/ceo/ai-operations/${lastRunId}`}
+              className="inline-block text-xs text-[var(--accent)] hover:underline"
+            >
+              צפה בתיעוד מלא ועלות הריצה →
+            </Link>
+          )}
         </div>
       )}
     </div>

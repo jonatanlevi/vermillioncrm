@@ -2,11 +2,12 @@ import type {
   AIProvider,
   ChatMessage,
   CompletionOptions,
+  CompletionResult,
 } from "./types";
 
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
+const CHAT_MODEL = "claude-sonnet-4-20250514";
 
-/** Stub-ready Claude provider — switch AI_PROVIDER=claude when ready */
 export class ClaudeProvider implements AIProvider {
   readonly name = "claude" as const;
   private apiKey: string;
@@ -24,7 +25,7 @@ export class ClaudeProvider implements AIProvider {
   async complete(
     messages: ChatMessage[],
     options?: CompletionOptions
-  ): Promise<string> {
+  ): Promise<CompletionResult> {
     this.ensureKey();
 
     const system = messages.find((m) => m.role === "system")?.content;
@@ -43,7 +44,7 @@ export class ClaudeProvider implements AIProvider {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: CHAT_MODEL,
         max_tokens: options?.maxTokens ?? 4096,
         system,
         messages: chatMessages,
@@ -57,8 +58,17 @@ export class ClaudeProvider implements AIProvider {
 
     const data = (await res.json()) as {
       content?: { type: string; text?: string }[];
+      usage?: { input_tokens?: number; output_tokens?: number };
     };
     const block = data.content?.find((c) => c.type === "text");
-    return block?.text ?? "";
+
+    return {
+      text: block?.text ?? "",
+      model: CHAT_MODEL,
+      usage: {
+        inputTokens: data.usage?.input_tokens ?? 0,
+        outputTokens: data.usage?.output_tokens ?? 0,
+      },
+    };
   }
 }

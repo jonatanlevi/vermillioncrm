@@ -53,6 +53,12 @@ export async function CeoDashboard() {
           >
             יומן פעילות
           </Link>
+          <Link
+            href="/ceo/approvals"
+            className="rounded-lg border border-amber-700/50 px-4 py-2 text-sm text-amber-200 hover:bg-amber-950/30"
+          >
+            אישור הרשמות
+          </Link>
         </div>
       </header>
 
@@ -118,7 +124,11 @@ export async function CeoDashboard() {
           <ul className="space-y-1 text-sm">
             {data.alerts.map((a, i) => (
               <li key={i}>
-                {a.employeeId ? (
+                {a.href ? (
+                  <Link href={a.href} className="text-amber-100 underline">
+                    {a.message}
+                  </Link>
+                ) : a.employeeId ? (
                   <Link
                     href={`/ceo/team/${a.employeeId}`}
                     className="text-amber-100 underline"

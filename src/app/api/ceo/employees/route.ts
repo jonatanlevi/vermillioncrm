@@ -13,17 +13,16 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    if (!body.name?.trim() || !body.email?.trim()) {
-      return NextResponse.json(
-        { ok: false, error: "שם ואימייל חובה" },
-        { status: 400 }
-      );
-    }
-
     if (body.crmAccess && body.password) {
+      if (!body.name?.trim() || !body.username?.trim()) {
+        return NextResponse.json(
+          { ok: false, error: "שם ושם משתמש חובה" },
+          { status: 400 }
+        );
+      }
       const employee = await createCrmEmployee({
         name: body.name,
-        email: body.email,
+        username: body.username,
         password: body.password,
         permissions: (body.permissions ?? {}) as PermissionMap,
         jobRole: body.jobRole,
@@ -32,6 +31,13 @@ export async function POST(req: Request) {
         ok: true,
         employee: { id: employee.id, name: employee.name },
       });
+    }
+
+    if (!body.name?.trim() || !body.email?.trim()) {
+      return NextResponse.json(
+        { ok: false, error: "שם ואימייל חובה" },
+        { status: 400 }
+      );
     }
 
     const employee = await createEmployee({

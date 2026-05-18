@@ -15,8 +15,26 @@ export interface ImageGenerationOptions {
   size?: "1024x1024" | "1792x1024" | "1024x1792";
 }
 
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface CompletionResult {
+  text: string;
+  model: string;
+  usage: TokenUsage;
+}
+
+export interface ImageResult {
+  url: string;
+  model: string;
+  /** הערכה — לפי מחירון קבוע */
+  costUsd: number;
+}
+
 export interface AIProvider {
   readonly name: AIProviderName;
-  complete(messages: ChatMessage[], options?: CompletionOptions): Promise<string>;
-  generateImage?(options: ImageGenerationOptions): Promise<{ url: string }>;
+  complete(messages: ChatMessage[], options?: CompletionOptions): Promise<CompletionResult>;
+  generateImage?(options: ImageGenerationOptions): Promise<ImageResult>;
 }

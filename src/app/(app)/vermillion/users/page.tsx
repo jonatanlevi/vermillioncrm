@@ -18,7 +18,7 @@ export default function VermillionUsersPage() {
             href="/vermillion/churned"
             className="text-sm text-[var(--muted)] hover:text-[var(--accent)] hover:underline"
           >
-            משתמשים שנטשו →
+            לא פעילים (נטשו / נמחקו) →
           </Link>
           <Link
             href="/vermillion"
