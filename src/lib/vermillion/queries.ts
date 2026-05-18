@@ -2,6 +2,7 @@ import {
   getVermillionDashboardFromStore,
   getVermillionUserDetailFromStore,
   getVermillionUsersFromStore,
+  getChurnedUsersFromStore,
 } from "./store";
 import type {
   VermillionDashboard,
@@ -24,6 +25,12 @@ export async function getVermillionUserDetail(
   userId: string
 ): Promise<VermillionUserDetail | null> {
   return getVermillionUserDetailFromStore(userId);
+}
+
+export async function getChurnedUsers(): Promise<
+  (VermillionUserRow & { deletedAt: Date })[]
+> {
+  return getChurnedUsersFromStore();
 }
 
 /** JSON snapshot for AI analytics agent — מקומי בלבד */

@@ -13,12 +13,20 @@ export default function VermillionUsersPage() {
             פרופיל, טיימר DNA, Stamps, אונבורדינג וצ׳אט AI
           </p>
         </div>
-        <Link
-          href="/vermillion"
-          className="text-sm text-[var(--accent)] hover:underline"
-        >
-          ← דשבורד
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/vermillion/churned"
+            className="text-sm text-[var(--muted)] hover:text-[var(--accent)] hover:underline"
+          >
+            משתמשים שנטשו →
+          </Link>
+          <Link
+            href="/vermillion"
+            className="text-sm text-[var(--accent)] hover:underline"
+          >
+            ← דשבורד
+          </Link>
+        </div>
       </header>
       <VermillionUsersTable />
     </div>

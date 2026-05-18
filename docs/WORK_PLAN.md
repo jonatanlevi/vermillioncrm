@@ -1,6 +1,6 @@
 # VerMillion CRM — תוכנית עבודה לסיום המערכת
 
-**עודכן:** מאי 2026  
+**עודכן:** 18 מאי 2026  
 **פרויקט CRM:** `c:\Users\97254\Desktop\vermillioncrm`  
 **אפליקציית VerMillion:** `c:\Users\97254\Desktop\million\vermillion`  
 **Supabase project:** `hegbvrvmgvmmbigfpqax`  
@@ -20,6 +20,25 @@ CRM פנימי לניהול עסק VerMillion:
 
 ---
 
+## סשן 2026-05-18: ניהול נטישה
+
+| נושא | סטטוס | פירוט |
+|------|--------|--------|
+| Realtime sync | ✅ | `VERMILLION_REALTIME_SYNC=true` · האזנה ל-8 טבלאות ב-Supabase (`profiles`, `commitment`, `daily_stamps`, `onboarding_state`, `onboarding_answers`, `chat_history`, `financial_data`, `game_sessions`) · `src/lib/ingestion/realtime-sync.ts` |
+| Soft-delete ל-`AppUser` | ✅ | שדה `deletedAt` ב-`prisma/schema.prisma` |
+| סנכרון מלא מסמן נטישה | ✅ | ב-`syncAppDataFromSource()` — משתמשים שלא חזרו מהמקור מקבלים `deletedAt`; חוזרים מאפסים `deletedAt` |
+| Realtime על מחיקה | ✅ | `removeLocalUser()` — soft delete (לא hard delete) · `userCount` רק לפעילים |
+| רשימה פעילה | ✅ | `getVermillionUsersFromStore()` — `where: { deletedAt: null }` |
+| משתמשים שנטשו | ✅ | `getChurnedUsersFromStore()` / `getChurnedUsers()` · עמוד `/vermillion/churned` |
+| קישור ב-UI | ✅ | `/vermillion/users` → «משתמשים שנטשו →» |
+| טבלת משתמשים (responsive) | ✅ | עמודות משניות ב-`md:hidden` — `users-table.tsx` |
+
+**הגדרה חד-פעמית (מחוץ ל-Git):** Realtime בדשבורד Supabase על 8 הטבלאות · `.env` עם `VERMILLION_REALTIME_SYNC=true`
+
+**לא בוצע ב-Git:** `.env`, `prisma/dev.db`
+
+---
+
 ## מה כבר בנוי (✅)
 
 | רכיב | סטטוס | מיקום |
@@ -31,11 +50,11 @@ CRM פנימי לניהול עסק VerMillion:
 | לוח בקרה + Autopilot | ✅ | `/` |
 | קמפיינים — 13 רשתות נפרדות | ✅ | `/campaigns` |
 | מכירות + דשבורד | ✅ | `/sales` |
-| VerMillion — Supabase dashboard | ✅ | `/vermillion`, `/vermillion/users` |
+| VerMillion — יניקה + Realtime | ✅ | `/vermillion`, `/vermillion/users`, `/vermillion/churned` |
+| מודול מנכ"ל (`/ceo`) | ✅ בסיס | KPI מוצר + צוות · `docs/CEO_MODULE.md` |
 | סוכן ניתוח נתונים | ✅ | `vermillion-agent.ts` |
 | תור משימות (jobs) | ✅ בסיס | `src/lib/jobs/` |
 | Stubs: WhatsApp, Social | ✅ | `integrations/` |
-| מודול מנכ"ל / עובדים | ❌ מתוכנן | `docs/CEO_MODULE.md` |
 
 ---
 
@@ -144,7 +163,8 @@ CRM פנימי לניהול עסק VerMillion:
   - `processJobQueue()` כל 5 דקות
   - דוח יומי במייל / וואטסאפ למנהל
   - סנכרון מדדי VerMillion
-- [ ] Webhook מ-Supabase (insert profiles) → CRM מתעדכן
+- [x] Realtime מ-Supabase → רענון משתמש ב-CRM (`realtime-sync.ts`, 8 טבלאות)
+- [ ] Webhook נוסף / edge-export (אופציונלי)
 
 ---
 
@@ -212,8 +232,8 @@ million/vermillion/
 | נושא | החלטה |
 |------|--------|
 | ארכיטקטורה | Modular Monolith (Next.js) |
-| נתוני אפליקציה | קריאה ישירה מ-Supabase (service role) |
-| CRM מקומי | Prisma — jobs, snapshots, לידים פנימיים |
+| נתוני אפליקציה | יניקה חד-כיוונית מ-Supabase → `AppUser` מקומי (ADR-002) |
+| CRM מקומי | Prisma SQLite — `AppUser`, jobs, לידים פנימיים; soft-delete ב-`deletedAt` |
 | AI עכשיו | Grok (`XAI_API_KEY`) |
 | AI אחר כך | `AI_PROVIDER=claude` |
 | פרסום stamps | רק דרך Edge Functions באפליקציה — CRM לא כותב stamps |

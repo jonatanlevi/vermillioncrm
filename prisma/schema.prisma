@@ -151,8 +151,9 @@ model AppUser {
   commitmentJson String   @default("null")
   metricsJson    String   @default("{}")
   detailJson     String   @default("{}")
-  syncedAt       DateTime @default(now())
+  syncedAt       DateTime  @default(now())
   joinedAt       DateTime?
+  deletedAt      DateTime?
 }
 
 model AgentRun {

@@ -49,13 +49,16 @@ function userIdFromPayload(payload: ChangePayload): string | null {
 }
 
 async function removeLocalUser(externalId: string) {
-  await db.appUser.deleteMany({ where: { externalId } });
-  const remaining = await db.appUser.count();
+  await db.appUser.updateMany({
+    where: { externalId, deletedAt: null },
+    data: { deletedAt: new Date() },
+  });
+  const active = await db.appUser.count({ where: { deletedAt: null } });
   const meta = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
   if (meta) {
     await db.appSyncMeta.update({
       where: { id: "singleton" },
-      data: { userCount: remaining },
+      data: { userCount: active },
     });
   }
 }

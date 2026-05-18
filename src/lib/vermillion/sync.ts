@@ -493,6 +493,19 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
         });
       }
 
+      // סמן כנטשו משתמשים שלא חזרו מהמקור
+      const activeIds = new Set(profiles.map((p) => p.id));
+      await tx.appUser.updateMany({
+        where: { deletedAt: null, externalId: { notIn: [...activeIds] } },
+        data: { deletedAt: syncedAt },
+      });
+
+      // אפס deletedAt למי שחזר (הוחזר לאחר מחיקה)
+      await tx.appUser.updateMany({
+        where: { deletedAt: { not: null }, externalId: { in: [...activeIds] } },
+        data: { deletedAt: null },
+      });
+
       await tx.appSyncMeta.upsert({
         where: { id: "singleton" },
         create: {

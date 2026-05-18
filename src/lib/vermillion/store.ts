@@ -82,12 +82,30 @@ export async function getVermillionDashboardFromStore(): Promise<VermillionDashb
 
 export async function getVermillionUsersFromStore(): Promise<VermillionUserRow[]> {
   const records = await db.appUser.findMany({
+    where: { deletedAt: null },
     orderBy: { joinedAt: "desc" },
   });
 
   return records
     .map((r) => rowFromAppUser(r))
     .filter((r): r is VermillionUserRow => r !== null);
+}
+
+export async function getChurnedUsersFromStore(): Promise<
+  (VermillionUserRow & { deletedAt: Date })[]
+> {
+  const records = await db.appUser.findMany({
+    where: { deletedAt: { not: null } },
+    orderBy: { deletedAt: "desc" },
+  });
+
+  return records
+    .map((r) => {
+      const row = rowFromAppUser(r);
+      if (!row) return null;
+      return { ...row, deletedAt: r.deletedAt! };
+    })
+    .filter((r): r is VermillionUserRow & { deletedAt: Date } => r !== null);
 }
 
 export async function getVermillionUserDetailFromStore(
