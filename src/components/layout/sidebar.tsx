@@ -80,37 +80,33 @@ export function Sidebar({
             <Link
               href="/ceo"
               className={`block rounded-lg px-3 py-2 text-sm ${
-                pathname.startsWith("/ceo")
+                pathname === "/ceo"
                   ? "bg-[var(--accent-dim)] text-white"
                   : "text-[var(--muted)] hover:bg-white/5"
               }`}
             >
               <span className="font-medium">מרכז מנכ״ל</span>
             </Link>
-            {pathname.startsWith("/ceo") && (
-              <>
-                <Link
-                  href="/ceo/attendance"
-                  className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
-                    pathname.startsWith("/ceo/attendance")
-                      ? "text-white"
-                      : "text-[var(--muted)] hover:text-white"
-                  }`}
-                >
-                  יומן נוכחות
-                </Link>
-                <Link
-                  href="/ceo/ai-operations"
-                  className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
-                    pathname.startsWith("/ceo/ai-operations")
-                      ? "text-white"
-                      : "text-[var(--muted)] hover:text-white"
-                  }`}
-                >
-                  מרכז AI — תיעוד
-                </Link>
-              </>
-            )}
+            <Link
+              href="/ceo/attendance"
+              className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                pathname.startsWith("/ceo/attendance")
+                  ? "text-white"
+                  : "text-[var(--muted)] hover:text-white"
+              }`}
+            >
+              יומן נוכחות
+            </Link>
+            <Link
+              href="/ceo/ai-operations"
+              className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                pathname.startsWith("/ceo/ai-operations")
+                  ? "text-white"
+                  : "text-[var(--muted)] hover:text-white"
+              }`}
+            >
+              מרכז AI
+            </Link>
           </div>
         )}
 
