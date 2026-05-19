@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { AiOpsAdvisorPanel } from "@/components/ceo/ai-ops-advisor-panel";
 import {
   getAgentCostSummaries,
   getRecentAgentRuns,
@@ -76,6 +77,8 @@ export default async function AiOperationsPage() {
           </Link>
         </div>
       </section>
+
+      <AiOpsAdvisorPanel />
 
       {/* עלויות אפליקציה לפי קטגוריה */}
       {appSummaries.length > 0 && (

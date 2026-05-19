@@ -56,6 +56,7 @@ export type AgentRunDetail = AgentRunListItem & {
 
 function agentTitle(agentId: string): string {
   if (agentId === "router") return "ניתוב אוטונומי";
+  if (agentId === "ai_ops") return "יועץ עלויות AI";
   if (KNOWN_AGENTS.includes(agentId as AgentId)) {
     return AGENT_META[agentId as AgentId].titleHe;
   }

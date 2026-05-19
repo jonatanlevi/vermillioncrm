@@ -5,6 +5,7 @@ import { MediaAgent } from "./media-agent";
 import { SalesAgent } from "./sales-agent";
 import { VermillionAgent } from "./vermillion-agent";
 import { WhatsappAgent } from "./whatsapp-agent";
+import { AiOpsAgent } from "./ai-ops-agent";
 import type { BaseAgent } from "./base-agent";
 
 const agents: Record<AgentId, BaseAgent> = {
@@ -14,6 +15,7 @@ const agents: Record<AgentId, BaseAgent> = {
   sales: new SalesAgent(),
   media: new MediaAgent(),
   vermillion: new VermillionAgent(),
+  ai_ops: new AiOpsAgent(),
 };
 
 export function getAgent(id: AgentId): BaseAgent {
@@ -29,4 +31,5 @@ export {
   SalesAgent,
   MediaAgent,
   VermillionAgent,
+  AiOpsAgent,
 };

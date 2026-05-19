@@ -4,7 +4,8 @@ export type AgentId =
   | "whatsapp"
   | "sales"
   | "media"
-  | "vermillion";
+  | "vermillion"
+  | "ai_ops";
 
 export interface AgentContext {
   agentId: AgentId;
@@ -65,5 +66,11 @@ export const AGENT_META: Record<
     titleHe: "מוצר VerMillion",
     description: "מנויים, מעורבות, פרימיום — מסונכרן מאפליקציית הלקוח",
     href: "/vermillion",
+  },
+  ai_ops: {
+    title: "AI Cost Advisor",
+    titleHe: "יועץ עלויות AI",
+    description: "ניתוח עלויות CRM + אפליקציה, חיסכון ושליטה בסוכנים",
+    href: "/ceo/ai-operations",
   },
 };

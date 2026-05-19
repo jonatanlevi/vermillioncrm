@@ -140,7 +140,7 @@ src/lib/agents/*                  # סוכנים לפי דומיין
 - NextAuth: `CEO` / `EMPLOYEE`, `/login`, `/register` (אישור מנכ״ל)
 - מחיקת משתמש אפליקציה: רק מנכ״ל → Supabase Auth + `ceoDeletedAt`
 - `/vermillion/churned` — נטשו vs נמחקו ע״י מנכ״ל
-- `/ceo/ai-operations` — תיעוד ריצות AI + שלבים + עלות
+- `/ceo/ai-operations` — תיעוד ריצות AI + שלבים + עלות + **יועץ עלויות AI** (סוכן `ai_ops`, מספרים מקוד)
 
 ---
 
@@ -183,6 +183,8 @@ src/lib/agents/*                  # סוכנים לפי דומיין
 - אין פרס מובטח מינימלי; טבלת 50–5000 ב-PRODUCT_SPEC = דוגמאות שיווק
 
 **UI:** `/vermillion/product` — מחשבון פרסים + ידע מוצר. API: `GET /api/vermillion/prize-calculator?subscribers=N`
+
+**יועץ עלויות AI:** `src/lib/ai/cost-analytics.ts` + `src/lib/agents/ai-ops-agent.ts` — API `POST /api/ceo/ai-operations/ask` (מנכ״ל). לא מחשב כסף ב-LLM.
 
 **אפיון:** `Desktop/million/PRODUCT_SPEC.html`
 
