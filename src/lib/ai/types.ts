@@ -1,4 +1,4 @@
-export type AIProviderName = "grok" | "claude";
+export type AIProviderName = "grok" | "claude" | "groq";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";

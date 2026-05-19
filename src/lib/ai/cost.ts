@@ -12,6 +12,9 @@ const PRICE_PER_MILLION: Record<
   claude: {
     "claude-sonnet-4-20250514": { input: 3, output: 15 },
   },
+  groq: {
+    "llama-3.3-70b-versatile": { input: 0.59, output: 0.79 },
+  },
 };
 
 const IMAGE_FLAT_USD: Record<string, number> = {
