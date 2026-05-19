@@ -128,16 +128,28 @@ export function Sidebar({
                 <span className="font-medium">{meta.titleHe}</span>
               </Link>
               {id === "vermillion" && active && (
-                <Link
-                  href="/vermillion/users"
-                  className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
-                    pathname.startsWith("/vermillion/users")
-                      ? "text-white"
-                      : "text-[var(--muted)] hover:text-white"
-                  }`}
-                >
-                  משתמשים
-                </Link>
+                <>
+                  <Link
+                    href="/vermillion/users"
+                    className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                      pathname.startsWith("/vermillion/users")
+                        ? "text-white"
+                        : "text-[var(--muted)] hover:text-white"
+                    }`}
+                  >
+                    משתמשים
+                  </Link>
+                  <Link
+                    href="/vermillion/dev-log"
+                    className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                      pathname.startsWith("/vermillion/dev-log")
+                        ? "text-white"
+                        : "text-[var(--muted)] hover:text-white"
+                    }`}
+                  >
+                    יומן עבודה
+                  </Link>
+                </>
               )}
             </div>
           );

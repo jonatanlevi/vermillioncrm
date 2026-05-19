@@ -304,3 +304,20 @@ model AutomationJob {
   runAt     DateTime @default(now())
   createdAt DateTime @default(now())
 }
+
+/// יומן עבודה יומי — נשלח אוטומטית מ-scripts/daily-log.js בכל deploy
+model DevLog {
+  id           String   @id @default(cuid())
+  date         String
+  project      String   @default("VerMillion")
+  generatedAt  DateTime
+  version      String?
+  deployUrl    String?
+  commits      String   @default("[]")
+  filesChanged String   @default("[]")
+  todos        String   @default("[]")
+  recentDone   String   @default("[]")
+  createdAt    DateTime @default(now())
+
+  @@unique([date, project])
+}
