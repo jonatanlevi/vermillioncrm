@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { hasRoutePermission, firstAllowedHref } from "@/lib/auth/permissions";
 
 const PUBLIC_PREFIXES = ["/login", "/register", "/unauthorized"];
-const PUBLIC_API = ["/api/auth", "/api/health"];
+const PUBLIC_API = ["/api/auth", "/api/health", "/api/dev-log"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
