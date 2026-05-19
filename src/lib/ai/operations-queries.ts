@@ -159,15 +159,65 @@ export async function getAgentRunDetail(id: string): Promise<AgentRunDetail | nu
   };
 }
 
-export async function getTotalAiCost(): Promise<{ costUsd: number; costLabel: string; runCount: number }> {
-  const agg = await db.agentRun.aggregate({
-    _sum: { costUsd: true },
-    _count: { id: true },
+const ILS_TO_USD = 1 / 3.72;
+
+export type AppCostSummary = {
+  month: string;
+  category: string;
+  totalIls: number;
+  count: number;
+};
+
+export async function getAppCostSummaries(): Promise<AppCostSummary[]> {
+  const month = new Date().toISOString().slice(0, 7);
+  const rows = await db.operationalCost.groupBy({
+    by: ["month", "category"],
+    where: { month },
+    _sum: { amountIls: true },
+    _count: { supabaseId: true },
+    orderBy: { _sum: { amountIls: "desc" } },
   });
-  const costUsd = agg._sum.costUsd ?? 0;
+  return rows.map((r) => ({
+    month: r.month,
+    category: r.category,
+    totalIls: r._sum.amountIls ?? 0,
+    count: r._count.supabaseId,
+  }));
+}
+
+export async function getRecentAppCosts(limit = 60): Promise<{
+  id: number; month: string; category: string; amountIls: number;
+  description: string | null; autoTracked: boolean; sourceAt: Date;
+}[]> {
+  return db.operationalCost.findMany({
+    orderBy: { sourceAt: "desc" },
+    take: limit,
+  });
+}
+
+export async function getTotalAiCost(): Promise<{
+  crmCostUsd: number; crmCostLabel: string; crmRunCount: number;
+  appCostIls: number; appCostCount: number;
+  totalCostIls: number;
+}> {
+  const month = new Date().toISOString().slice(0, 7);
+  const [crmAgg, appAgg] = await Promise.all([
+    db.agentRun.aggregate({ _sum: { costUsd: true }, _count: { id: true } }),
+    db.operationalCost.aggregate({
+      where: { month },
+      _sum: { amountIls: true },
+      _count: { supabaseId: true },
+    }),
+  ]);
+  const crmCostUsd = crmAgg._sum.costUsd ?? 0;
+  const appCostIls = appAgg._sum.amountIls ?? 0;
+  const crmCostIls = crmCostUsd / ILS_TO_USD;
   return {
-    costUsd,
-    costLabel: formatUsdIls(costUsd),
-    runCount: agg._count.id,
+    crmCostUsd,
+    crmCostLabel: formatUsdIls(crmCostUsd),
+    crmRunCount: crmAgg._count.id,
+    appCostIls,
+    appCostCount: appAgg._count.supabaseId,
+    totalCostIls: Math.round((crmCostIls + appCostIls) * 100) / 100,
   };
 }

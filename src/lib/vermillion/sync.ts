@@ -494,6 +494,10 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
   });
 
   try {
+    const prevMonth = new Date();
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    const prevMk = prevMonth.toISOString().slice(0, 7);
+
     const [
       profilesRes,
       commitmentsRes,
@@ -501,6 +505,7 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
       onboardingRes,
       chatsRes,
       prizePool,
+      costsRes,
     ] = await Promise.all([
       sb
         .from("profiles")
@@ -513,6 +518,12 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
       sb.from("onboarding_state").select("user_id, days_completed"),
       sb.from("chat_history").select("user_id, messages"),
       fetchPrizePoolSummary().then((p) => p ?? computePrizePoolFromSource(sb)),
+      sb
+        .from("operational_costs")
+        .select("id, month, week, category, amount_ils, description, auto_tracked, created_at")
+        .in("month", [mk, prevMk])
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
 
     if (profilesRes.error) throw new Error(profilesRes.error.message);
@@ -628,6 +639,34 @@ export async function syncAppDataFromSource(): Promise<SyncResult> {
             detailJson: JSON.stringify(detail),
             syncedAt,
             joinedAt: row.joined_at ? new Date(row.joined_at) : null,
+          },
+        });
+      }
+
+      // סנכרן עלויות תפעול מ-Supabase
+      const costs = (costsRes.data ?? []) as {
+        id: number; month: string; week?: string | null; category: string;
+        amount_ils: number; description?: string | null; auto_tracked?: boolean;
+        created_at: string;
+      }[];
+      for (const c of costs) {
+        await tx.operationalCost.upsert({
+          where: { supabaseId: c.id },
+          create: {
+            supabaseId:  c.id,
+            month:       c.month,
+            week:        c.week ?? null,
+            category:    c.category,
+            amountIls:   Number(c.amount_ils),
+            description: c.description ?? null,
+            autoTracked: c.auto_tracked ?? false,
+            sourceAt:    new Date(c.created_at),
+            syncedAt,
+          },
+          update: {
+            amountIls:   Number(c.amount_ils),
+            description: c.description ?? null,
+            syncedAt,
           },
         });
       }

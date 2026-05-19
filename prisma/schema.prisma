@@ -305,6 +305,22 @@ model AutomationJob {
   createdAt DateTime @default(now())
 }
 
+/// עלויות תפעול — מסונכרן מ-Supabase operational_costs (אפליקציה + ידני)
+model OperationalCost {
+  supabaseId  Int      @id
+  month       String
+  week        String?
+  category    String
+  amountIls   Float
+  description String?
+  autoTracked Boolean  @default(false)
+  sourceAt    DateTime
+  syncedAt    DateTime @default(now())
+
+  @@index([month])
+  @@index([category])
+}
+
 /// יומן עבודה יומי — נשלח אוטומטית מ-scripts/daily-log.js בכל deploy
 model DevLog {
   id           String   @id @default(cuid())
