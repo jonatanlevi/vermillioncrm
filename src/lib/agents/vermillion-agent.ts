@@ -5,6 +5,7 @@ import {
 } from "@/lib/vermillion/queries";
 import { hasLocalAppData, isIngestionConfigured } from "@/lib/vermillion/status";
 import { augmentSystemPrompt, buildVermillionAgentContext } from "@/lib/product-knowledge";
+import { buildDeterministicPrizeContext } from "@/lib/product-knowledge/prize-calculator";
 import type { AgentContext, AgentResult } from "@/lib/types/agents";
 import { BaseAgent } from "./base-agent";
 
@@ -20,9 +21,10 @@ export class VermillionAgent extends BaseAgent {
 You MUST interpret user data using the VerMillion product knowledge (DNA, Friday/Saturday challenge,
 game→token→stamp flow, premium vs free, prize pool rules, 31 games, onboarding days 1-7 and 9-30).
 Never invent product rules — only use PRODUCT KNOWLEDGE + the data snapshot.
-Analyze: churn risk, fraud (token_used vs stamps), premium conversion, cohorts by lang, prize economics.
+CRITICAL: Never calculate money (prizes, revenue, splits). If PRIZE_CALCULATION_OFFICIAL block exists, quote those numbers exactly.
+Analyze: churn risk, fraud (token_used vs stamps), premium conversion, cohorts by lang.
 Respond in Hebrew: executive summary, insights tied to product rules, risks, 3-5 CEO-level actions.
-Use numbers from the snapshot. Reference specific product mechanics when explaining anomalies.`;
+Use numbers from the snapshot and official prize blocks only.`;
 
   async run(ctx: AgentContext): Promise<AgentResult> {
     if (!isIngestionConfigured()) {
@@ -44,7 +46,40 @@ Use numbers from the snapshot. Reference specific product mechanics when explain
 
     const snapshot = await getVermillionAnalyticsSnapshot();
     const dash = await getVermillionDashboard();
-    const agentContext = await buildVermillionAgentContext(snapshot);
+
+    const prizeCalc = await buildDeterministicPrizeContext(
+      ctx.input,
+      dash.totals.premium
+    );
+
+    if (prizeCalc.isPrimaryAnswer && prizeCalc.block) {
+      await this.logStep(
+        "CALC",
+        "חישוב פרסים רשמי",
+        "שאלת כסף/פרס — תשובה מהמנוע הדטרמיניסטי (prize-pool.js) בלי חשבון AI.",
+        {
+          outputPreview: `מנויים בתרחיש: ${prizeCalc.counts.join(", ")}`,
+        }
+      );
+
+      return {
+        agentId: this.id,
+        success: true,
+        message: prizeCalc.block,
+        data: {
+          month: dash.monthKey,
+          deterministicPrize: true,
+          subscriberScenarios: prizeCalc.counts,
+        },
+      };
+    }
+
+    const agentContext = [
+      await buildVermillionAgentContext(snapshot),
+      prizeCalc.block
+        ? `\n\n---\nPRIZE_CALCULATION_OFFICIAL (אסור לחשב מחדש):\n${prizeCalc.block}`
+        : "",
+    ].join("");
 
     await this.logStep(
       "CONTEXT",

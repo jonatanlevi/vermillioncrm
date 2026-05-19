@@ -4,7 +4,6 @@ import {
   PRODUCT_KNOWLEDGE_VERSION,
   VERMILLION_GAMES,
 } from "./vermillion";
-import { getLivePrizeContext } from "./live";
 
 export {
   PRODUCT_KNOWLEDGE_VERSION,
@@ -12,6 +11,29 @@ export {
   PRODUCT_KNOWLEDGE_FULL,
   VERMILLION_GAMES,
 };
+
+export {
+  WEEKLY_PRIZE_RATIOS,
+  PRODUCT_SPEC_PRIZE_TABLE,
+  PRIZE_BUSINESS_MODEL,
+  computePrizePoolFromInputs,
+  distributeWeeklyPrizes,
+  formatPrizeEconomicsForAI,
+} from "./prize-economics";
+
+export {
+  fetchResolvedPrizeConfig,
+  type ResolvedPrizeConfig,
+} from "./prize-config";
+
+export {
+  computePrizeCalculation,
+  buildDeterministicPrizeContext,
+  formatPrizeCalculationsForUser,
+  isPrizeMoneyQuestion,
+  extractSubscriberCounts,
+  type PrizeCalculationResult,
+} from "./prize-calculator";
 
 export type ProductKnowledgeLevel = "brief" | "full";
 
@@ -33,6 +55,7 @@ ${getProductKnowledgeText(level)}`;
 
 /** הקשר מלא לסוכן אנליטיקה: מוצר + פרס חי + נתונים */
 export async function buildVermillionAgentContext(dataSnapshot: string): Promise<string> {
+  const { getLivePrizeContext } = await import("./live");
   const livePrize = await getLivePrizeContext();
   return [
     getProductKnowledgeText("full"),

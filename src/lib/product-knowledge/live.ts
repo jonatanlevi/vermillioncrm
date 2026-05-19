@@ -1,22 +1,38 @@
 import { getVermillionDashboard } from "@/lib/vermillion/queries";
+import { formatPrizeEconomicsForAI } from "./prize-economics";
+import { fetchResolvedPrizeConfig } from "./prize-config";
+import {
+  computePrizeCalculation,
+  formatPrizeCalculationsForUser,
+} from "./prize-calculator";
 
 /** כללי פרס חיים מהדשבורד המקומי (אחרי יניקת prize_config) */
 export async function getLivePrizeContext(): Promise<string> {
   try {
     const dash = await getVermillionDashboard();
     const p = dash.prizePool;
-    if (!p) {
-      return "קופת פרס (חיה): לא זמינה — הרץ סנכרון מאפליקציה.";
+    const config = await fetchResolvedPrizeConfig();
+
+    if (!p || p.activeSubscribers <= 0) {
+      return formatPrizeEconomicsForAI();
     }
-    return [
-      "קופת פרס (נתונים חיים מהמראה המקומית, מ-prize_config + premium count):",
-      `- מנויים premium פעילים (במראה): ${p.activeSubscribers}`,
-      `- הכנסה חודשית משוערת: ₪${p.monthlyRevenue}`,
-      `- הוצאות תפעול משוערות: ₪${p.operationalCosts}`,
-      `- קופה שבועית נטו משוערת: ₪${p.weeklyPrizeNet}`,
-      `חודש נוכחי במראה: ${dash.monthKey}`,
-    ].join("\n");
+
+    const result = computePrizeCalculation(p.activeSubscribers, config, {
+      hypothetical: false,
+    });
+
+    const official = formatPrizeCalculationsForUser(
+      [
+        {
+          title: `מצב נוכחי: ${p.activeSubscribers} מנויי premium (מראה CRM)`,
+          result,
+        },
+      ],
+      config
+    );
+
+    return `${formatPrizeEconomicsForAI()}\n\n${official}`;
   } catch {
-    return "קופת פרס (חיה): שגיאה בקריאה מהמאגר המקומי.";
+    return formatPrizeEconomicsForAI();
   }
 }

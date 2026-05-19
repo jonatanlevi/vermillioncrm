@@ -167,7 +167,24 @@ src/lib/agents/*                  # סוכנים לפי דומיין
 
 **מדריך למנכ״ל (לא מתכנת):** `docs/CEO_HANDS_GUIDE.md`
 
-**ידע מוצר ל-AI (חובה לניתוח מדויק):** `src/lib/product-knowledge/` — DNA, משחקים, תקנון, anti-cheat. UI: `/vermillion/product`. כל סוכן מקבל תמצית; סוכן vermillion מקבל מלא + נתונים.
+**ידע מוצר ל-AI:** `src/lib/product-knowledge/` — DNA, משחקים, תקנון, anti-cheat, פרסים.
+
+**פרסים — מקורות קוד:**
+| קובץ | תפקיד |
+|------|--------|
+| `prize-config.ts` | `prize_config` + `operational_costs` מ-Supabase |
+| `prize-calculator.ts` | חישוב דטרמיניסטי (לא LLM) — זהה ל-`api/prize-pool.js` |
+| `prize-economics.ts` | טבלת PRODUCT_SPEC, יחסים 35/25/20/12/8% |
+| `vermillion-agent.ts` | שאלות פרס/כסף → תשובה רק ממחשבון, בלי חשבון AI |
+
+**מדיניות פרסים (מנכ״ל מאי 2026):** `docs/PRIZE_POLICY.md`
+- **משוער (תצוגה):** תפעול 20% מההכנסה (או % מ-prize_config) — אפליקציה + CRM
+- **סופי (תשלום זוכים):** `operational_costs` בפועל לחודש ב-Supabase; רק אחרי סגירת חודש
+- אין פרס מובטח מינימלי; טבלת 50–5000 ב-PRODUCT_SPEC = דוגמאות שיווק
+
+**UI:** `/vermillion/product` — מחשבון פרסים + ידע מוצר. API: `GET /api/vermillion/prize-calculator?subscribers=N`
+
+**אפיון:** `Desktop/million/PRODUCT_SPEC.html`
 
 ---
 

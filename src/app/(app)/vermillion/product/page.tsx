@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { PRODUCT_KNOWLEDGE_FULL, PRODUCT_KNOWLEDGE_VERSION, VERMILLION_GAMES } from "@/lib/product-knowledge";
+import { PrizeCalculatorWidget } from "@/components/vermillion/prize-calculator-widget";
+import {
+  PRODUCT_KNOWLEDGE_FULL,
+  PRODUCT_KNOWLEDGE_VERSION,
+  PRODUCT_SPEC_PRIZE_TABLE,
+  VERMILLION_GAMES,
+  WEEKLY_PRIZE_RATIOS,
+} from "@/lib/product-knowledge";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +23,45 @@ export default function VermillionProductKnowledgePage() {
           גרסה {PRODUCT_KNOWLEDGE_VERSION} · מקור אמת לסוכני AI ולמנכ״ל
         </p>
       </header>
+
+      <PrizeCalculatorWidget />
+
+      <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 overflow-x-auto">
+        <h2 className="mb-3 font-semibold">פרסים שבועיים — מנגנון PRODUCT_SPEC</h2>
+        <p className="mb-3 text-sm text-[var(--muted)]">
+          50% מהנטו לקרן פרסים (÷4 שבועות) · 5 זוכים · חלוקה:{" "}
+          {WEEKLY_PRIZE_RATIOS.map((r) => `${r * 100}%`).join(" / ")}
+        </p>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[var(--muted)]">
+              <th className="pb-2 text-right">משתמשים</th>
+              <th className="pb-2 text-right">קרן שבועית</th>
+              <th className="pb-2 text-right">מקום 1</th>
+              <th className="pb-2 text-right">מקום 2</th>
+              <th className="pb-2 text-right">מקום 3</th>
+              <th className="pb-2 text-right">מקום 4</th>
+              <th className="pb-2 text-right">מקום 5</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PRODUCT_SPEC_PRIZE_TABLE.map((row) => (
+              <tr key={row.users} className="border-t border-[var(--border)]/40">
+                <td className="py-2 font-medium">{row.users.toLocaleString("he-IL")}</td>
+                <td className="py-2">₪{row.weeklyFund.toLocaleString("he-IL")}</td>
+                {row.places.map((p, i) => (
+                  <td key={i} className="py-2">
+                    ₪{p.toLocaleString("he-IL")}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-3 text-xs text-[var(--muted)]">
+          הפרסים גדלים עם הקהילה — לכל משתמש יש אינטרס להביא חברים. מקור: PRODUCT_SPEC.html
+        </p>
+      </section>
 
       <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h2 className="mb-3 font-semibold">משחקים ({VERMILLION_GAMES.length})</h2>
