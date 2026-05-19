@@ -167,6 +167,8 @@ src/lib/agents/*                  # סוכנים לפי דומיין
 
 **מדריך למנכ״ל (לא מתכנת):** `docs/CEO_HANDS_GUIDE.md`
 
+**ידע מוצר ל-AI (חובה לניתוח מדויק):** `src/lib/product-knowledge/` — DNA, משחקים, תקנון, anti-cheat. UI: `/vermillion/product`. כל סוכן מקבל תמצית; סוכן vermillion מקבל מלא + נתונים.
+
 ---
 
 ## Supabase (רק ליניקה — לא ב-UI)

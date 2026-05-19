@@ -2,10 +2,21 @@ import { completeTracked } from "@/lib/ai/complete";
 import type { AgentContext, AgentId, AgentResult } from "@/lib/types/agents";
 import { getAgentRunContext } from "@/lib/ai/run-context";
 import { logAgentStep } from "@/lib/ai/audit";
+import {
+  augmentSystemPrompt,
+  type ProductKnowledgeLevel,
+} from "@/lib/product-knowledge";
 
 export abstract class BaseAgent {
   abstract readonly id: AgentId;
   abstract readonly systemPrompt: string;
+
+  /** רמת ידע מוצר VerMillion ב-system prompt — ברירת מחדל brief */
+  protected productKnowledgeLevel: ProductKnowledgeLevel = "brief";
+
+  protected systemPromptWithProduct(): string {
+    return augmentSystemPrompt(this.systemPrompt, this.productKnowledgeLevel);
+  }
 
   protected async think(userInput: string, extraContext?: string): Promise<string> {
     const rationale = extraContext
@@ -14,7 +25,7 @@ export abstract class BaseAgent {
 
     return completeTracked(
       [
-        { role: "system", content: this.systemPrompt },
+        { role: "system", content: this.systemPromptWithProduct() },
         {
           role: "user",
           content: extraContext

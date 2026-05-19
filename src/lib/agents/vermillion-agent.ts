@@ -4,17 +4,25 @@ import {
   getVermillionDashboard,
 } from "@/lib/vermillion/queries";
 import { hasLocalAppData, isIngestionConfigured } from "@/lib/vermillion/status";
+import { augmentSystemPrompt, buildVermillionAgentContext } from "@/lib/product-knowledge";
 import type { AgentContext, AgentResult } from "@/lib/types/agents";
 import { BaseAgent } from "./base-agent";
 
 export class VermillionAgent extends BaseAgent {
   readonly id = "vermillion" as const;
-  readonly systemPrompt = `You are VerMillion Data Analytics Agent for an Israeli fintech/gaming CRM.
-You analyze mirrored app data (local CRM copy): users, premium, DNA timer, stamps, streaks,
-onboarding, days 9-30 (daily_logs), game_sessions (token_used anti-fraud), languages, prize pool.
-Use intelligence.atRiskUsers, premiumUpgradeCandidates, languageBreakdown from the snapshot.
-Respond in Hebrew: executive summary, key insights, risks (fraud/churn), 3-5 actionable recommendations.
-Use numbers from the data. Be specific.`;
+
+  /** ידע מלא ב-user context; ב-system רק תמצית */
+  protected systemPromptWithProduct(): string {
+    return augmentSystemPrompt(this.systemPrompt, "brief");
+  }
+
+  readonly systemPrompt = `You are VerMillion Data Analytics Agent inside the company CRM.
+You MUST interpret user data using the VerMillion product knowledge (DNA, Friday/Saturday challenge,
+game→token→stamp flow, premium vs free, prize pool rules, 31 games, onboarding days 1-7 and 9-30).
+Never invent product rules — only use PRODUCT KNOWLEDGE + the data snapshot.
+Analyze: churn risk, fraud (token_used vs stamps), premium conversion, cohorts by lang, prize economics.
+Respond in Hebrew: executive summary, insights tied to product rules, risks, 3-5 CEO-level actions.
+Use numbers from the snapshot. Reference specific product mechanics when explaining anomalies.`;
 
   async run(ctx: AgentContext): Promise<AgentResult> {
     if (!isIngestionConfigured()) {
@@ -36,11 +44,12 @@ Use numbers from the data. Be specific.`;
 
     const snapshot = await getVermillionAnalyticsSnapshot();
     const dash = await getVermillionDashboard();
+    const agentContext = await buildVermillionAgentContext(snapshot);
 
     await this.logStep(
       "CONTEXT",
-      "איסוף נתוני מוצר",
-      "שליפת דשבורד וסנAPSHOT מקומי מהמאגר (לאחר יניקה מ-Supabase) לפני שליחה למודל.",
+      "ידע מוצר + נתונים",
+      "טעינת חוזה מוצר מלא (DNA, משחקים, תקנון, anti-cheat), קופת פרס חיה, וסנAPSHOT משתמשים מהמראה המקומית.",
       { outputPreview: `משתמשים: ${dash.totals.users}, פרימיום: ${dash.totals.premium}` }
     );
 
@@ -65,7 +74,7 @@ Use numbers from the data. Be specific.`;
       });
     }
 
-    const raw = await this.think(ctx.input, snapshot);
+    const raw = await this.think(ctx.input, agentContext);
 
     return {
       agentId: this.id,

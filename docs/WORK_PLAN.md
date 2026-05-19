@@ -1,6 +1,21 @@
 # VerMillion CRM — תוכנית עבודה לסיום המערכת
 
-**עודכן:** 18 מאי 2026  
+**עודכן:** 19 מאי 2026  
+
+---
+
+## ⚠️ נקודות שימת לב פתוחות — לפני משתמשים אמיתיים
+
+| קובץ | מה לשנות | סיבה |
+|------|----------|-------|
+| `vermillion/src/screens/vermillion/VerMillionScreen.js` שורה 20 | `DEV_BYPASS_TIMER = false` | **פתוח כרגע לבדיקות (19 מאי 2026)** — חוסם גייט שעת DNA + חסימת stamp. חייב לסגור לפני הכנסת משתמשים אמיתיים! |
+| `vermillion/src/screens/onboarding/OnboardingChatScreen.js` | `DEV_NO_QUESTION_LIMIT = false` | אם עדיין true — מסיר מגבלת 3 שאלות ליום |
+
+**אחרי סגירה: `deploy.ps1` מ-`vermillion/`**
+
+---
+
+
 **פרויקט CRM:** `c:\Users\97254\Desktop\vermillioncrm`  
 **אפליקציית VerMillion:** `c:\Users\97254\Desktop\million\vermillion`  
 **Supabase project:** `hegbvrvmgvmmbigfpqax`  

@@ -136,6 +136,16 @@ export function Sidebar({
                     משתמשים
                   </Link>
                   <Link
+                    href="/vermillion/product"
+                    className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
+                      pathname.startsWith("/vermillion/product")
+                        ? "text-white"
+                        : "text-[var(--muted)] hover:text-white"
+                    }`}
+                  >
+                    ידע מוצר (חוקים)
+                  </Link>
+                  <Link
                     href="/vermillion/dev-log"
                     className={`mr-3 mt-0.5 block rounded-lg px-3 py-1.5 text-xs ${
                       pathname.startsWith("/vermillion/dev-log")
