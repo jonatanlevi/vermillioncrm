@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   NETWORK_CATEGORIES,
   SOCIAL_NETWORKS,
@@ -11,10 +11,26 @@ import {
 import { NetworkPanel } from "./network-panel";
 
 const CATEGORY_ORDER: NetworkCategory[] = ["mobile", "general", "professional"];
+const ELECTRIC_DURATION_MS = 2500;
 
 export function CampaignNetworkHub() {
   const [activeId, setActiveId] = useState<SocialNetworkConfig["id"]>("instagram");
+  const [animatingId, setAnimatingId] = useState<SocialNetworkConfig["id"] | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const active = SOCIAL_NETWORKS.find((n) => n.id === activeId) ?? SOCIAL_NETWORKS[0];
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  function handleSelect(id: SocialNetworkConfig["id"]) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setActiveId(id);
+    setAnimatingId(id);
+    timerRef.current = setTimeout(() => setAnimatingId(null), ELECTRIC_DURATION_MS);
+  }
 
   return (
     <div className="space-y-6">
@@ -31,26 +47,33 @@ export function CampaignNetworkHub() {
             {NETWORK_CATEGORIES[cat].labelHe}
           </h2>
           <div className="flex flex-wrap gap-2">
-            {networksByCategory(cat).map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => setActiveId(n.id)}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                  activeId === n.id
-                    ? "border-[var(--accent)] bg-[var(--accent-dim)] text-white"
-                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/50"
-                }`}
-                style={
-                  activeId === n.id
-                    ? { boxShadow: `0 0 0 1px ${n.color}55` }
-                    : undefined
-                }
-              >
-                <span>{n.icon}</span>
-                <span>{n.nameHe}</span>
-              </button>
-            ))}
+            {networksByCategory(cat).map((n) => {
+              const isActive = activeId === n.id;
+              const isAnimating = animatingId === n.id;
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => handleSelect(n.id)}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition${isAnimating ? " electric-burst" : ""} ${
+                    isActive
+                      ? "border-[var(--accent)] bg-[var(--accent-dim)] text-white"
+                      : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/50"
+                  }`}
+                  style={{
+                    ...(isActive && !isAnimating
+                      ? { boxShadow: `0 0 0 1px ${n.color}55` }
+                      : {}),
+                    ...(isAnimating
+                      ? ({ "--el-color": n.color } as React.CSSProperties)
+                      : {}),
+                  }}
+                >
+                  <span>{n.icon}</span>
+                  <span>{n.nameHe}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
       ))}

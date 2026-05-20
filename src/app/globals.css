@@ -24,3 +24,37 @@ body {
   color: var(--text);
   font-family: var(--font-geist-sans), "Segoe UI", system-ui, sans-serif;
 }
+
+/* Dark scrollbars — removes the white bar on overflow-auto containers */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg);
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* Electric burst animation for network/icon buttons */
+@keyframes electric-burst {
+  0%   { box-shadow: 0 0 0 1px var(--el-color), 0 0 6px var(--el-color); }
+  20%  { box-shadow: 0 0 0 4px var(--el-color), 0 0 18px var(--el-color), 0 0 36px var(--el-color); }
+  40%  { box-shadow: 0 0 0 2px var(--el-color), 0 0 8px var(--el-color); }
+  60%  { box-shadow: 0 0 0 5px var(--el-color), 0 0 22px var(--el-color), 0 0 44px var(--el-color); }
+  80%  { box-shadow: 0 0 0 3px var(--el-color), 0 0 14px var(--el-color); }
+  100% { box-shadow: 0 0 0 1px var(--el-color), 0 0 6px var(--el-color); }
+}
+
+.electric-burst {
+  animation: electric-burst 0.5s ease-in-out 5;
+}
