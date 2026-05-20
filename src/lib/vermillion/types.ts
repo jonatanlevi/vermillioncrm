@@ -77,9 +77,25 @@ export interface VermillionDashboard {
 }
 
 export interface VermillionChatMessage {
+  id?: string;
   role?: string;
   text?: string;
   content?: string;
+  sentAt?: number;
+  typingMs?: number | null;
+  charsPerSec?: number | null;
+  responseMs?: number | null;
+}
+
+export interface ActivityEvent {
+  id: string;
+  user_id: string;
+  occurred_at: string;
+  event_type: string;
+  screen: string | null;
+  payload: Record<string, unknown>;
+  session_id: string | null;
+  device_tz: string | null;
 }
 
 export interface VermillionGameSession {
@@ -115,6 +131,8 @@ export interface VermillionAuthMeta {
 
 export interface VermillionUserDetail extends VermillionUserRow {
   syncedAt?: Date;
+  deletedAt?: Date | null;
+  ceoDeletedAt?: Date | null;
   onboarding_answers: { day: number; question_key: string; answer: string | null }[];
   daily_answers?: Record<string, unknown>;
   financial_data: Record<string, unknown> | null;

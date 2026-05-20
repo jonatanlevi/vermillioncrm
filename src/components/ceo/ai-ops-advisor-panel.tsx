@@ -54,8 +54,12 @@ export function AiOpsAdvisorPanel() {
           <button
             key={ex}
             type="button"
-            onClick={() => setInput(ex)}
+            onClick={() => {
+              setInput(ex);
+              setError(null);
+            }}
             className="rounded-lg border border-[var(--border)] bg-black/20 px-2 py-1 text-xs text-[var(--muted)] hover:border-violet-600 hover:text-white"
+            title="לחץ כדי למלא — ואז «שאל את היועץ»"
           >
             {ex.slice(0, 42)}…
           </button>

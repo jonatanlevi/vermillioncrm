@@ -3,18 +3,8 @@ import { isIngestionSourceConfigured } from "@/lib/ingestion/app-source";
 
 export type AppSyncStatus = "NEVER" | "RUNNING" | "OK" | "FAILED";
 
-function syncMetaDelegate() {
-  return (db as { appSyncMeta?: typeof db.customer }).appSyncMeta;
-}
-
 export async function getAppSyncMeta() {
-  const meta = syncMetaDelegate();
-  if (!meta) {
-    throw new Error(
-      "Prisma לא מעודכן. עצור npm run dev והרץ: npx prisma generate"
-    );
-  }
-  return meta.upsert({
+  return db.appSyncMeta.upsert({
     where: { id: "singleton" },
     create: { id: "singleton" },
     update: {},
@@ -27,9 +17,7 @@ export function isIngestionConfigured(): boolean {
 
 /** יש נתונים מקומיים לאחר סנכרון מוצלח */
 export async function hasLocalAppData(): Promise<boolean> {
-  const meta = syncMetaDelegate();
-  if (!meta) return false;
-  const row = await meta.findUnique({ where: { id: "singleton" } });
+  const row = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
   return row?.lastSyncStatus === "OK" && row.userCount > 0;
 }
 

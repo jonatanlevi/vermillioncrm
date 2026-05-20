@@ -150,8 +150,13 @@ function parseChatMessages(raw: unknown) {
   return raw.map((m) => {
     const item = m as Record<string, unknown>;
     return {
+      id: item.id != null ? String(item.id) : undefined,
       role: String(item.role ?? ""),
       text: String(item.text ?? item.content ?? ""),
+      sentAt: typeof item.sentAt === "number" ? item.sentAt : undefined,
+      typingMs: typeof item.typingMs === "number" ? item.typingMs : null,
+      charsPerSec: typeof item.charsPerSec === "number" ? item.charsPerSec : null,
+      responseMs: typeof item.responseMs === "number" ? item.responseMs : null,
     };
   });
 }
@@ -307,7 +312,11 @@ async function authUserExists(
   userId: string
 ): Promise<boolean> {
   const { data, error } = await sb.auth.admin.getUserById(userId);
-  return !error && Boolean(data.user);
+  if (error) {
+    console.warn("[sync] auth.admin.getUserById:", userId, error.message);
+    return false;
+  }
+  return Boolean(data.user);
 }
 
 /**
@@ -386,12 +395,15 @@ export async function refreshAppUserFromSource(
     };
   }
 
-  if (!(await authUserExists(sb, userId))) {
-    await markAppUserChurnedFromSource(userId);
-    return { ok: false, error: "חשבון Auth נמחק באפליקציה — סומן כנטש ב-CRM" };
-  }
-
   const profile = profileRes.data as VermillionProfile;
+
+  // פרופיל קיים ב-Supabase — ממשיכים גם אם Auth Admin נכשל (מפתח/רשת) כדי לא לחסום רענון ידני
+  if (!(await authUserExists(sb, userId))) {
+    console.warn(
+      "[sync] Auth לא אומת — מרענן מטבלאות פרופיל בלבד:",
+      userId
+    );
+  }
   const detail = await fetchUserDetailFromSource(sb, userId, mk, { includeAuth: true });
   const commitment = detail.commitment;
 

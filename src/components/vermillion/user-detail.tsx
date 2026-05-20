@@ -3,6 +3,12 @@ import { auth } from "@/auth";
 import { getVermillionUserDetail, formatTimer } from "@/lib/vermillion/queries";
 import { IngestionGate } from "./ingestion-gate";
 import { UserAdminActions } from "./user-admin-actions";
+import {
+  QUESTION_MAP,
+  DAY_META,
+  formatAnswer,
+  flattenDailyAnswers,
+} from "@/lib/vermillion/question-map";
 
 export async function VermillionUserDetail({ userId }: { userId: string }) {
   const [user, session] = await Promise.all([getVermillionUserDetail(userId), auth()]);
@@ -159,24 +165,23 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
         </section>
       )}
 
-      {user.onboarding_answers.length === 0 && user.onboardingDays === 0 && (
-        <EmptyHint text="אין תשובות אונבורדינג — לחץ «רענן מהאפליקציה»" />
-      )}
+      {user.onboardingDays === 0 &&
+        (!user.daily_answers || Object.keys(user.daily_answers).length === 0) &&
+        user.onboarding_answers.length === 0 &&
+        (!user.financial_data || Object.keys(user.financial_data).length === 0) && (
+          <EmptyHint text="אין תשובות אונבורדינג — לחץ «רענן מהאפליקציה»" />
+        )}
 
-      {user.onboarding_answers.length > 0 && (
-        <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <h2 className="mb-3 font-semibold">תשובות אונבורדינג</h2>
-          <ul className="space-y-2 text-sm">
-            {user.onboarding_answers.map((a, i) => (
-              <li key={i} className="border-b border-[var(--border)]/40 pb-2">
-                <span className="text-[var(--muted)]">
-                  יום {a.day} · {a.question_key}:
-                </span>{" "}
-                {a.answer}
-              </li>
-            ))}
-          </ul>
-        </section>
+      {(user.onboardingDays > 0 ||
+        user.onboarding_answers.length > 0 ||
+        (user.daily_answers && Object.keys(user.daily_answers).length > 0) ||
+        (user.financial_data && Object.keys(user.financial_data).length > 0)) && (
+        <DailyAnswersSection
+          dailyAnswers={user.daily_answers ?? {}}
+          daysCompletedOverride={user.onboarding_days_completed}
+          onboardingAnswers={user.onboarding_answers}
+          financialData={user.financial_data}
+        />
       )}
 
       {user.financial_data && Object.keys(user.financial_data).length > 0 && (
@@ -384,5 +389,99 @@ function EmptyHint({ text }: { text: string }) {
     <p className="rounded-lg border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)]">
       {text}
     </p>
+  );
+}
+
+function DailyAnswersSection({
+  dailyAnswers,
+  daysCompletedOverride = [],
+  onboardingAnswers = [],
+  financialData = null,
+}: {
+  dailyAnswers: Record<string, unknown>;
+  daysCompletedOverride?: number[];
+  onboardingAnswers?: { day: number; question_key: string; answer: string | null }[];
+  financialData?: Record<string, unknown> | null;
+}) {
+  const profileText =
+    typeof dailyAnswers.profileText === "string" ? dailyAnswers.profileText : null;
+  const daysFromState = Array.isArray(dailyAnswers.daysCompleted)
+    ? (dailyAnswers.daysCompleted as number[])
+    : [];
+  const daysCompleted =
+    daysFromState.length > 0 ? daysFromState : daysCompletedOverride;
+
+  const flat = flattenDailyAnswers(dailyAnswers, {
+    onboardingAnswers,
+    financialData,
+  });
+
+  // group by day
+  const byDay: Record<number, { key: string; value: unknown }[]> = {};
+  for (const [key, val] of Object.entries(flat)) {
+    const meta = QUESTION_MAP[key];
+    const day = meta?.day ?? 0;
+    if (!byDay[day]) byDay[day] = [];
+    byDay[day].push({ key, value: val });
+  }
+  const sortedDays = Object.keys(byDay)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  return (
+    <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 space-y-5">
+      <h2 className="font-semibold">
+        שאלון אפיון
+        {daysCompleted.length > 0 && (
+          <span className="mr-2 text-sm font-normal text-[var(--muted)]">
+            {daysCompleted.length}/7 ימים הושלמו
+          </span>
+        )}
+      </h2>
+
+      {profileText && (
+        <div className="rounded-lg bg-black/20 px-4 py-3 text-sm leading-relaxed border border-[var(--border)]/40">
+          <p className="mb-1 text-xs font-semibold text-[var(--muted)]">סיכום AI — פרופיל שנוצר</p>
+          <p className="text-[var(--text)]">{profileText}</p>
+        </div>
+      )}
+
+      {sortedDays.map((day) => {
+        const dayInfo = DAY_META[day];
+        const questions = byDay[day];
+        // sort by question order in QUESTION_MAP (by day key order)
+        const sortedQ = [...questions].sort((a, b) => {
+          const keys = Object.keys(QUESTION_MAP);
+          return keys.indexOf(a.key) - keys.indexOf(b.key);
+        });
+        return (
+          <div key={day} className="space-y-2">
+            <p className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wide">
+              {dayInfo ? `יום ${day} — ${dayInfo.icon} ${dayInfo.topic}` : `יום ${day}`}
+            </p>
+            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              {sortedQ.map(({ key, value }) => {
+                const meta = QUESTION_MAP[key];
+                return (
+                  <Item
+                    key={key}
+                    label={meta?.label ?? key}
+                    value={formatAnswer(key, value)}
+                  />
+                );
+              })}
+            </dl>
+          </div>
+        );
+      })}
+
+      {sortedDays.length === 0 && (
+        <p className="text-sm text-[var(--muted)]">
+          {daysCompleted.length > 0
+            ? "ימים סומנו כהושלמו אך טקסט התשובות לא נמשך — לחץ «רענן מהאפליקציה» בראש הכרטיס."
+            : "אין תשובות עדיין"}
+        </p>
+      )}
+    </section>
   );
 }

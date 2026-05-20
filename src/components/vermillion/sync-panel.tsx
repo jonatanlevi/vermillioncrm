@@ -91,8 +91,9 @@ export function AppSyncPanel({
 
       <button
         type="button"
-        onClick={runSync}
+        onClick={() => void runSync()}
         disabled={!ingestionConfigured || loading}
+        aria-busy={loading}
         className="mt-4 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
       >
         {loading ? "מייבא נתונים…" : "סנכרן עכשיו מאפליקציה"}

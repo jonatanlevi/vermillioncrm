@@ -21,6 +21,7 @@ const WATCH_TABLES = [
   "game_sessions",
   "daily_logs",
   "game_log",
+  "user_activity_events",
 ] as const;
 
 type ChangePayload = {
@@ -31,7 +32,7 @@ type ChangePayload = {
 };
 
 let started = false;
-let channelRef: ReturnType<NonNullable<ReturnType<typeof getIngestionClient>>["channel"]> | null =
+const channelRef: ReturnType<NonNullable<ReturnType<typeof getIngestionClient>>["channel"]> | null =
   null;
 let channelStatus: "off" | "connecting" | "live" | "error" = "off";
 let lastEventAt: Date | null = null;

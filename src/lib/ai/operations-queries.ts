@@ -190,10 +190,19 @@ export async function getRecentAppCosts(limit = 60): Promise<{
   id: number; month: string; category: string; amountIls: number;
   description: string | null; autoTracked: boolean; sourceAt: Date;
 }[]> {
-  return db.operationalCost.findMany({
+  const rows = await db.operationalCost.findMany({
     orderBy: { sourceAt: "desc" },
     take: limit,
   });
+  return rows.map((r) => ({
+    id: r.supabaseId,
+    month: r.month,
+    category: r.category,
+    amountIls: r.amountIls,
+    description: r.description,
+    autoTracked: r.autoTracked,
+    sourceAt: r.sourceAt,
+  }));
 }
 
 export async function getTotalAiCost(): Promise<{

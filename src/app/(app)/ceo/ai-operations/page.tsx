@@ -148,7 +148,7 @@ export default async function AiOperationsPage() {
 
       {appSummaries.length === 0 && (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center text-sm text-[var(--muted)]">
-          אין עדיין עלויות אפליקציה מסונכרנות — לחץ על "סנכרן נתונים" בלוח הבקרה של VerMillion.
+          {`אין עדיין עלויות אפליקציה מסונכרנות — לחץ על "סנכרן נתונים" בלוח הבקרה של VerMillion.`}
         </div>
       )}
 
