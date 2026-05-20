@@ -19,13 +19,16 @@ export default auth((req) => {
     PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
     PUBLIC_API.some((p) => pathname.startsWith(p))
   ) {
-    if ((pathname === "/login" || pathname === "/register") && session) {
-      const role = session.user?.role;
-      const perms = session.user?.permissions;
+    if ((pathname === "/login" || pathname === "/register") && session?.user?.role) {
+      const role = session.user.role;
+      const perms = session.user.permissions;
       if (pathname === "/register" && role === "CEO") {
         return NextResponse.next();
       }
-      return NextResponse.redirect(new URL(firstAllowedHref(role, perms), req.url));
+      const dest = firstAllowedHref(role, perms);
+      if (dest !== "/unauthorized") {
+        return NextResponse.redirect(new URL(dest, req.url));
+      }
     }
     return NextResponse.next();
   }
