@@ -1,6 +1,6 @@
 # VerMillion CRM — תוכנית עבודה לסיום המערכת
 
-**עודכן:** 19 מאי 2026  
+**עודכן:** 20 מאי 2026  
 
 ---
 
@@ -32,6 +32,15 @@ CRM פנימי לניהול עסק VerMillion:
 - אוטומציה מלאה (Grok עכשיו → Claude אחר כך)
 
 **אפיון מודול מנכ"ל:** `docs/CEO_MODULE.md`
+
+---
+
+## סשן 2026-05-20: UI Fixes
+
+| נושא | סטטוס | פירוט |
+|------|--------|--------|
+| White scrollbar | ✅ | `globals.css` — custom dark scrollbars (Firefox + Webkit) |
+| Electric animation — כפתורי רשתות | ✅ | `campaign-network-hub.tsx` — אנימציה בלחיצה בלבד (2.5ש׳), active state לאחר מכן |
 
 ---
 
@@ -75,28 +84,40 @@ CRM פנימי לניהול עסק VerMillion:
 | Prisma + SQLite מקומי | ✅ | `prisma/schema.prisma` |
 | 6 סוכנים + Orchestrator | ✅ | `src/lib/agents/`, `orchestrator.ts` |
 | AI Grok + Claude מוכן | ✅ | `src/lib/ai/` |
+| GroqProvider (AI חינמי) | ✅ | `src/lib/ai/groq.ts` |
 | לוח בקרה + Autopilot | ✅ | `/` |
+| דשבורד מנכ"ל (ExecutiveHome) | ✅ | `/` — KPI מוצר + צוות + תפעול |
 | קמפיינים — 13 רשתות נפרדות | ✅ | `/campaigns` |
 | מכירות + דשבורד | ✅ | `/sales` |
 | VerMillion — יניקה + Realtime | ✅ | `/vermillion`, `/vermillion/users`, `/vermillion/churned` |
-| מודול מנכ"ל (`/ceo`) | ✅ בסיס | KPI מוצר + צוות · `docs/CEO_MODULE.md` |
+| מודול מנכ"ל (`/ceo`) | ✅ | KPI צוות + ביצועים + התראות · `docs/CEO_MODULE.md` |
+| מרכז AI + מעקב עלויות | ✅ | `/ceo/ai-operations` |
+| יומן נוכחות | ✅ | `/ceo/attendance` |
+| Live Monitor — פעילות בזמן אמת | ✅ | `/vermillion/live` |
+| יומן עבודה (DevLog) | ✅ | `/vermillion/dev-log` |
+| מחשבון פרסים דטרמיניסטי | ✅ | `src/lib/vermillion/prize-calc.ts` |
+| שכבת ידע מוצר לAI | ✅ | `src/lib/vermillion/product-knowledge.ts` |
+| RBAC — CEO + עובדים | ✅ | `src/auth.ts`, `src/middleware.ts` |
+| אישור הרשמות עובדים | ✅ | `/ceo/approvals` |
 | סוכן ניתוח נתונים | ✅ | `vermillion-agent.ts` |
 | תור משימות (jobs) | ✅ בסיס | `src/lib/jobs/` |
 | Stubs: WhatsApp, Social | ✅ | `integrations/` |
+| UI: Custom scrollbars כהים | ✅ | `globals.css` |
+| UI: Electric animation — כפתורי רשתות | ✅ | `campaign-network-hub.tsx` |
 
 ---
 
-## מה חסר (סיכום)
+## מה חסר (סיכום — מצב 20 מאי 2026)
 
-1. **מודול מנכ"ל (`/ceo`)** — מעקב עובדים, יעדים, audit, דשבורד CEO
-2. **חיבור Supabase אמיתי** — `.env` עם `SUPABASE_SERVICE_ROLE_KEY`
-3. **אימות משתמשים ל-CRM** — מי רשאי להיכנס + role CEO/EMPLOYEE
-3. **אינטגרציות אמיתיות** — WhatsApp, פרסום רשתות, חשבוניות PDF
-4. **סנכרון / cache** — אופציונלי: PostgreSQL production + sync מתוזמן
-5. **Cron / רקע** — jobs אוטומטיים, דוחות יומיים
-6. **מדיה וידאו** — ייצור סרטונים לפרסום
-7. **Deploy CRM** — Vercel/Railway + domain
-8. **בדיקות + אבטחה** — RLS, secrets, audit log
+| נושא | עדיפות |
+|------|--------|
+| **חיבור Supabase אמיתי** (`.env` עם `SUPABASE_SERVICE_ROLE_KEY`) | 🔴 קריטי |
+| **אינטגרציות אמיתיות** — WhatsApp (Twilio/Meta), OAuth רשתות, חשבוניות PDF | 🟠 גבוהה |
+| **PostgreSQL production** במקום SQLite | 🟠 גבוהה |
+| **Cron jobs** — דוחות יומיים, sync מתוזמן | 🟡 בינונית |
+| **מדיה וידאו** — Runway / API וידאו | 🟡 בינונית |
+| **בדיקות + אבטחה** — RLS, secrets audit, E2E | 🟡 בינונית |
+| **מובייל responsive מלא** | 🟢 נמוכה |
 
 ---
 
@@ -132,31 +153,33 @@ CRM פנימי לניהול עסק VerMillion:
 
 ---
 
-### שלב 1.5 — מודול מנכ"ל / מעקב עובדים (שבוע 1–2) 👔
+### שלב 1.5 — מודול מנכ"ל / מעקב עובדים (שבוע 1–2) 👔 ✅ הושלם
 
 **מטרה:** אתה כמנכ"ל רואה את כל הצוות — מי עושה מה, מול יעדים.
 
 **אפיון מלא:** `docs/CEO_MODULE.md`
 
-- [ ] Prisma: `Employee`, `EmployeeActivity`, `EmployeeGoal`
-- [ ] קישור: `Sale`, `Campaign`, `AgentRun` → `employeeId`
-- [ ] `/ceo` — דשבורד (KPI צוות, דירוג, התראות, timeline)
-- [ ] `/ceo/team` + `/ceo/team/[id]`
-- [ ] `/ceo/activity` — יומן פעילות
-- [ ] `/ceo/goals` — יעדים חודשיים
-- [ ] סוכן `ceo` — סיכום ניהולי בעברית
-- [ ] הרשאות: רק CEO רואה `/ceo` (אחרי auth)
+- [x] Prisma: `Employee`, `EmployeeActivity`, `EmployeeGoal`
+- [x] קישור: `Sale`, `Campaign`, `AgentRun` → `employeeId`
+- [x] `/ceo` — דשבורד (KPI צוות, דירוג, התראות)
+- [x] `/ceo/team` + `/ceo/team/[id]`
+- [x] `/ceo/activity` — יומן פעילות
+- [x] `/ceo/ai-operations` — מרכז AI + עלויות
+- [x] `/ceo/attendance` — יומן נוכחות
+- [x] סוכן `ceo` — סיכום ניהולי בעברית
+- [x] הרשאות: רק CEO רואה `/ceo`
+- [ ] `/ceo/goals` — יעדים חודשיים (עדיין חסר)
 
 **לא לבלבל:** עובדים (צוות פנימי) ≠ משתמשי אפליקציה (`/vermillion/users`).
 
 ---
 
-### שלב 2 — אימות והרשאות CRM (שבוע 1–2)
+### שלב 2 — אימות והרשאות CRM (שבוע 1–2) ✅ הושלם
 
-- [ ] התחברות מנהל (Supabase Auth או NextAuth)
-- [ ] רשימת אימיילים מורשים (admin allowlist)
-- [ ] הגנה על כל `/api/*` routes
-- [ ] לא לחשוף `service_role` ללקוח
+- [x] התחברות מנהל (NextAuth + Credentials)
+- [x] CEO מ-`.env` + עובדים מ-`Employee` + bcrypt
+- [x] Middleware — הגנה על routes + `/ceo` ל-CEO בלבד
+- [x] RBAC מלא — permissions per agent module
 
 ---
 
@@ -192,6 +215,7 @@ CRM פנימי לניהול עסק VerMillion:
   - דוח יומי במייל / וואטסאפ למנהל
   - סנכרון מדדי VerMillion
 - [x] Realtime מ-Supabase → רענון משתמש ב-CRM (`realtime-sync.ts`, 8 טבלאות)
+- [x] Live Monitor — `/vermillion/live` — פעילות משתמשים בזמן אמת
 - [ ] Webhook נוסף / edge-export (אופציונלי)
 
 ---
