@@ -2,6 +2,7 @@
   "name": "vermillioncrm",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "prisma generate && next build",
@@ -9,7 +10,10 @@
     "lint": "eslint",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "electron": "electron .",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3001 && electron .\"",
+    "electron:build": "npm run build && electron-builder --win"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -29,10 +33,45 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.8.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.5"
+  },
+  "build": {
+    "appId": "com.vermillion.crm",
+    "productName": "VerMillion CRM",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "electron/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "installerIcon": "electron/icon.ico"
+    },
+    "files": [
+      "electron/**/*",
+      "src/**/*",
+      "prisma/**/*",
+      "public/**/*",
+      ".next/**/*",
+      "package.json",
+      "next.config.*"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma/dev.db",
+        "to": "app/prisma/dev.db"
+      }
+    ]
   }
 }

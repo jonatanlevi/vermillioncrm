@@ -76,7 +76,7 @@ export async function GET() {
 
     const chatRaw = chatByUser.get(userId);
     const messages = Array.isArray(chatRaw)
-      ? (chatRaw as RawMessage[]).slice(-5).map((m) => ({
+      ? (chatRaw as RawMessage[]).slice(-40).map((m) => ({
           role: String(m.role ?? ""),
           text: String(m.text ?? m.content ?? ""),
           sentAt: typeof m.sentAt === "number" ? m.sentAt : null,
@@ -115,7 +115,7 @@ export async function GET() {
       isLive,
       stats: { avgTypingMs, avgResponseMs, eventCount: events.length },
       events,           // chronological activity events (newest first)
-      recentMessages: messages,  // last 5 chat messages as fallback
+      recentMessages: messages,  // last 40 from chat_history — תמליל ב-Live Monitor
     };
   })
   .filter((u) => u.events.length > 0)
