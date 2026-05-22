@@ -321,6 +321,22 @@ model OperationalCost {
   @@index([category])
 }
 
+/// אירועי פעילות משתמשים — מסונכרן ב-Realtime מ-user_activity_events
+model AppUserEvent {
+  id         String   @id @default(cuid())
+  externalId String
+  eventType  String
+  screen     String?
+  payload    String?
+  sessionId  String?
+  deviceTz   String?
+  occurredAt DateTime
+  savedAt    DateTime @default(now())
+
+  @@index([externalId])
+  @@index([occurredAt])
+}
+
 /// יומן עבודה יומי — נשלח אוטומטית מ-scripts/daily-log.js בכל deploy
 model DevLog {
   id           String   @id @default(cuid())

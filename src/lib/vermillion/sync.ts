@@ -205,8 +205,7 @@ async function fetchUserDetailFromSource(
       .from("daily_stamps")
       .select("*")
       .eq("user_id", userId)
-      .order("stamped_at", { ascending: false })
-      .limit(60),
+      .order("stamped_at", { ascending: false }),
     sb
       .from("onboarding_state")
       .select("days_completed, daily_answers")
@@ -229,8 +228,7 @@ async function fetchUserDetailFromSource(
         "id, day, month_key, game_key, game_score, started_at, completed_at, duration_ms, token_used"
       )
       .eq("user_id", userId)
-      .order("completed_at", { ascending: false })
-      .limit(25),
+      .order("completed_at", { ascending: false }),
     sb
       .from("daily_logs")
       .select("id, day, coaching_answer, challenge_done, multiplier, logged_at")
@@ -289,6 +287,57 @@ async function fetchUserDetailFromSource(
       (s: VermillionDailyStamp) => s.month_key === mk
     ),
   };
+}
+
+async function refreshDashboardCacheFromLocalDb() {
+  const mk = monthKey();
+  const users = await db.appUser.findMany({
+    where: { deletedAt: null, ceoDeletedAt: null },
+    select: { externalId: true, name: true, email: true, subscription: true, metricsJson: true },
+  });
+
+  let premium = 0;
+  let stampedUsers = 0;
+  let totalStamps = 0;
+  const topStampers: { userId: string; name: string; stamps: number; score: number }[] = [];
+
+  for (const u of users) {
+    if (u.subscription === "premium") premium++;
+    let metrics: { stampsThisMonth?: number; totalScoreThisMonth?: number } = {};
+    try { metrics = JSON.parse(u.metricsJson); } catch {}
+    const stamps = metrics.stampsThisMonth ?? 0;
+    const score = metrics.totalScoreThisMonth ?? 0;
+    if (stamps > 0) stampedUsers++;
+    totalStamps += stamps;
+    topStampers.push({ userId: u.externalId, name: u.name || u.email || u.externalId.slice(0, 8), stamps, score });
+  }
+
+  topStampers.sort((a, b) => b.score - a.score || b.stamps - a.stamps);
+
+  const meta = await db.appSyncMeta.findUnique({ where: { id: "singleton" } });
+  let cache: Record<string, unknown> = {};
+  try { cache = JSON.parse(meta?.dashboardCache ?? "{}"); } catch {}
+
+  const updatedCache = {
+    ...cache,
+    monthKey: mk,
+    configured: true,
+    totals: {
+      ...(typeof cache.totals === "object" && cache.totals !== null ? cache.totals : {}),
+      users: users.length,
+      premium,
+      free: users.length - premium,
+      stampedUsersThisMonth: stampedUsers,
+      totalStampsThisMonth: totalStamps,
+    },
+    topStampers: topStampers.slice(0, 10),
+  };
+
+  await db.appSyncMeta.upsert({
+    where: { id: "singleton" },
+    create: { id: "singleton", dashboardCache: JSON.stringify(updatedCache), userCount: users.length, monthKey: mk },
+    update: { dashboardCache: JSON.stringify(updatedCache), userCount: users.length },
+  });
 }
 
 /** סימון נטישה מקומי כשהמשתמש נעלם מהמקור (לא מחיקת מנכ״ל) */
@@ -472,6 +521,8 @@ export async function refreshAppUserFromSource(
       deletedAt: null,
     },
   });
+
+  await refreshDashboardCacheFromLocalDb();
 
   return { ok: true };
 }

@@ -2,6 +2,7 @@
  * האזנה לשינויים ב-Supabase (Realtime) → רענון משתמש ב-CRM.
  * דורש: Realtime מופעל על הטבלאות בדשבורד Supabase.
  */
+import { db } from "@/lib/db";
 import { getIngestionClient, isIngestionSourceConfigured } from "./app-source";
 import {
   markAppUserChurnedFromSource,
@@ -86,6 +87,25 @@ function scheduleUserRefresh(userId: string) {
   );
 }
 
+async function saveActivityEvent(userId: string, row: Record<string, unknown>) {
+  try {
+    const occurredAt = row.occurred_at ? new Date(row.occurred_at as string) : new Date();
+    await db.appUserEvent.create({
+      data: {
+        externalId: userId,
+        eventType: typeof row.event_type === "string" ? row.event_type : "unknown",
+        screen: typeof row.screen === "string" ? row.screen : null,
+        payload: row.payload != null ? JSON.stringify(row.payload) : null,
+        sessionId: typeof row.session_id === "string" ? row.session_id : null,
+        deviceTz: typeof row.device_tz === "string" ? row.device_tz : null,
+        occurredAt,
+      },
+    });
+  } catch (e) {
+    console.warn("[realtime-sync] saveActivityEvent failed:", e);
+  }
+}
+
 function handleChange(payload: ChangePayload) {
   lastEventAt = new Date();
   const userId = userIdFromPayload(payload);
@@ -94,6 +114,14 @@ function handleChange(payload: ChangePayload) {
   if (payload.table === "profiles" && payload.eventType === "DELETE") {
     void removeLocalUser(userId);
     return;
+  }
+
+  if (
+    payload.table === "user_activity_events" &&
+    payload.eventType === "INSERT" &&
+    payload.new
+  ) {
+    void saveActivityEvent(userId, payload.new);
   }
 
   scheduleUserRefresh(userId);
