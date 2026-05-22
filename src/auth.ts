@@ -1,12 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { db } from "@/lib/db";
+import { findEmployeeForLogin, normalizeLoginId } from "@/lib/auth/employee-login";
 import { permissionsToJson } from "@/lib/auth/permissions";
-
-function normalizeUsername(value: string) {
-  return value.trim().toLowerCase();
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
@@ -19,18 +15,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const username = normalizeUsername(String(credentials?.username ?? ""));
-        const password = String(credentials?.password ?? "");
-        if (!username || !password) return null;
+        const loginId = normalizeLoginId(String(credentials?.username ?? ""));
+        const password = String(credentials?.password ?? "").trim();
+        if (!loginId || !password) return null;
 
         const adminUser =
           process.env.CRM_ADMIN_USERNAME?.trim() ||
           process.env.CRM_ADMIN_EMAIL?.trim();
-        const adminPassword = process.env.CRM_ADMIN_PASSWORD ?? "";
+        const adminPassword = (process.env.CRM_ADMIN_PASSWORD ?? "").trim();
 
         if (
           adminUser &&
-          username === normalizeUsername(adminUser) &&
+          loginId === normalizeLoginId(adminUser) &&
           password === adminPassword
         ) {
           return {
@@ -42,7 +38,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        const employee = await db.employee.findUnique({ where: { username } });
+        const employee = await findEmployeeForLogin(
+          String(credentials?.username ?? "")
+        );
         if (
           !employee?.isActive ||
           !employee.passwordHash ||

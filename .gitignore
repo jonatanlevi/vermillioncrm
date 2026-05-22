@@ -21,6 +21,8 @@ crm-server.log
 
 # production
 /build
+/dist-electron
+electron/template.db
 
 # misc
 .DS_Store

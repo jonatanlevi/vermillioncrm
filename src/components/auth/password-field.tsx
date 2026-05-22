@@ -4,8 +4,9 @@ import { useId, useState } from "react";
 
 type Props = {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  name?: string;
   autoComplete?: string;
   minLength?: number;
   required?: boolean;
@@ -16,8 +17,9 @@ type Props = {
 
 export function PasswordField({
   label,
-  value,
+  value = "",
   onChange,
+  name,
   autoComplete = "new-password",
   minLength = 8,
   required = true,
@@ -46,12 +48,14 @@ export function PasswordField({
       <div className="relative">
         <input
           id={id}
+          name={name}
           required={required}
           type={visible ? "text" : "password"}
           minLength={minLength}
           autoComplete={autoComplete}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
+          {...(onChange
+            ? { value, onChange: (e) => onChange(e.target.value) }
+            : { defaultValue: "" })}
           dir="ltr"
           className={`mt-0 w-full rounded-lg border bg-black/20 py-2 pl-10 pr-3 text-sm text-white outline-none focus:ring-1 focus:ring-[var(--accent)]/40 ${borderClass}`}
         />

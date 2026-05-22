@@ -1,6 +1,6 @@
 {
   "name": "vermillioncrm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "main": "electron/main.js",
   "scripts": {
@@ -13,7 +13,11 @@
     "postinstall": "prisma generate",
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3001 && electron .\"",
-    "electron:build": "npm run build && electron-builder --win"
+    "build:standalone": "prisma generate && next build && node scripts/prepare-electron-app.js",
+    "electron:build": "npm run build:standalone && npm run electron:pack",
+    "electron:pack": "node scripts/pack-safe.js",
+    "electron:build:dir": "npm run build:standalone && electron-builder --win --x64 --dir",
+    "icon": "node electron/make-icon.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -39,38 +43,60 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.18",
     "prisma": "^5.22.0",
+    "rcedit": "^5.0.2",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "to-ico": "^1.1.5",
     "typescript": "^5",
     "wait-on": "^8.0.5"
   },
   "build": {
     "appId": "com.vermillion.crm",
     "productName": "VerMillion CRM",
+    "copyright": "VerMillion",
     "directories": {
-      "output": "dist-electron"
+      "output": "dist-electron",
+      "buildResources": "electron"
     },
+    "asar": true,
     "win": {
-      "target": "nsis",
-      "icon": "electron/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
       "perMachine": false,
-      "installerIcon": "electron/icon.ico"
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "installer-icon.ico",
+      "uninstallerIcon": "installer-icon.ico",
+      "installerHeaderIcon": "installer-icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "VerMillion CRM",
+      "language": "1037",
+      "warningsAsErrors": false
     },
     "files": [
       "electron/**/*",
-      "src/**/*",
-      "prisma/**/*",
-      "public/**/*",
-      ".next/**/*",
-      "package.json",
-      "next.config.*"
+      "package.json"
     ],
     "extraResources": [
       {
-        "from": "prisma/dev.db",
-        "to": "app/prisma/dev.db"
+        "from": "electron/template.db",
+        "to": "prisma/template.db"
+      },
+      {
+        "from": ".env.example",
+        "to": ".env.example"
       }
     ]
   }
