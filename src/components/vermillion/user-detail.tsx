@@ -229,7 +229,9 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
             <span className="text-xs text-[var(--muted)]">{user.chat_messages.length} הודעות</span>
           </div>
           <div className="max-h-[520px] space-y-3 overflow-y-auto pl-1" dir="rtl">
-            {user.chat_messages.map((m, i) => {
+            {user.chat_messages.filter((m, i, arr) =>
+              i === arr.findIndex(x => x.text === m.text && x.role === m.role)
+            ).map((m, i) => {
               const isUser = m.role === "user" || m.role === "human";
               const t = m.sentAt
                 ? new Date(m.sentAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
