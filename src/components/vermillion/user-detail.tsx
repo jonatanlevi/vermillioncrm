@@ -224,22 +224,36 @@ export async function VermillionUserDetail({ userId }: { userId: string }) {
 
       {user.chat_messages.length > 0 && (
         <section className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <h2 className="mb-3 font-semibold">היסטוריית צ׳אט AI</h2>
-          <ul className="max-h-96 space-y-2 overflow-y-auto text-sm">
-            {user.chat_messages.map((m, i) => (
-              <li
-                key={i}
-                className={`rounded-lg px-3 py-2 ${
-                  m.role === "user" ? "bg-[var(--accent-dim)]/30" : "bg-black/20"
-                }`}
-              >
-                <span className="text-xs text-[var(--muted)]">
-                  {m.role === "user" ? "משתמש" : "יועץ"}:
-                </span>{" "}
-                {m.text}
-              </li>
-            ))}
-          </ul>
+          <div className="mb-4 flex items-center justify-between" dir="rtl">
+            <h2 className="font-semibold">שיחת VerMillion ↔ משתמש</h2>
+            <span className="text-xs text-[var(--muted)]">{user.chat_messages.length} הודעות</span>
+          </div>
+          <div className="max-h-[520px] space-y-3 overflow-y-auto pl-1" dir="rtl">
+            {user.chat_messages.map((m, i) => {
+              const isUser = m.role === "user" || m.role === "human";
+              const t = m.sentAt
+                ? new Date(m.sentAt).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })
+                : null;
+              return (
+                <div key={i} className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+                  <div className="mb-0.5 flex items-center gap-1.5 px-1 text-[10px] text-[var(--muted)]">
+                    {!isUser && <span className="font-semibold text-[var(--accent)]">VerMillion</span>}
+                    {isUser && <span className="font-semibold text-sky-400">משתמש</span>}
+                    {t && <span dir="ltr">{t}</span>}
+                  </div>
+                  <div
+                    className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      isUser
+                        ? "rounded-tl-sm bg-sky-950/60 text-sky-50 ring-1 ring-sky-800/40"
+                        : "rounded-tr-sm bg-[var(--accent-dim)]/20 text-[var(--foreground)] ring-1 ring-[var(--accent)]/20"
+                    }`}
+                  >
+                    {m.text || "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
 
