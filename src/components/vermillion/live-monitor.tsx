@@ -649,7 +649,7 @@ export function LiveMonitor() {
         <p className="text-sm text-[var(--muted)]">
           {userFilter === "live"
             ? "אין משתמשים פעילים כרגע (אירוע ב-5 דקות האחרונות)."
-            : "אין נתוני פעילות — צריך להריץ את migration ב-Supabase."}
+            : "אין פעילות בשעה האחרונה — ברגע שמשתמש יפתח את האפליקציה יופיע כאן."}
         </p>
       )}
 
