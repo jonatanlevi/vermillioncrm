@@ -17,7 +17,8 @@ export function RetryRunButton({ runId }: { runId: string }) {
         const data = await res.json().catch(() => ({})) as { error?: string };
         setError(data.error ?? "שגיאה בניסיון חוזר");
       } else {
-        router.refresh();
+        const json = await res.json() as { runId: string };
+        router.push(`/ceo/ai-operations/${json.runId}`);
       }
     } catch {
       setError("שגיאת רשת");

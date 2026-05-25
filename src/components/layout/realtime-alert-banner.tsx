@@ -6,7 +6,7 @@ export function RealtimeAlertBanner() {
   const { data } = useVermillionSync() ?? { data: null };
   const rt = data?.realtime;
 
-  if (!rt?.enabled || rt.status === "live") return null;
+  if (!rt?.enabled || rt.status === "live" || rt.status === "connecting") return null;
 
   const isError = rt.status === "error" || rt.status === "off";
   const errorSnippet = rt.lastError ? ` — ${rt.lastError.slice(0, 60)}` : "";

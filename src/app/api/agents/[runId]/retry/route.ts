@@ -20,11 +20,14 @@ export async function POST(
     return NextResponse.json({ error: "Run not found or not failed" }, { status: 400 });
   }
 
-  const result = await runAgent({
-    agentId: original.agentId as AgentId,
-    input: original.input,
-    chainJobs: true,
-  });
-
-  return NextResponse.json({ runId: result.runId });
+  try {
+    const result = await runAgent({
+      agentId: original.agentId as AgentId,
+      input: original.input,
+      chainJobs: true,
+    });
+    return NextResponse.json({ runId: result.runId });
+  } catch {
+    return NextResponse.json({ error: "שגיאה בהפעלת הסוכן" }, { status: 500 });
+  }
 }
