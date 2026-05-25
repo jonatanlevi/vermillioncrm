@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getAgentRunDetail } from "@/lib/ai/operations-queries";
+import { RetryRunButton } from "@/components/ceo/retry-run-button";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,10 @@ export default async function AiRunDetailPage({
           <Item label="שלבים" value={String(run.stepCount)} />
         </dl>
         {run.error && (
-          <p className="mt-3 rounded-lg bg-red-950/30 px-3 py-2 text-sm text-red-200">{run.error}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-red-950/30 px-3 py-2">
+            <p className="flex-1 text-sm text-red-200">{run.error}</p>
+            {run.status === "FAILED" && <RetryRunButton runId={run.id} />}
+          </div>
         )}
       </header>
 

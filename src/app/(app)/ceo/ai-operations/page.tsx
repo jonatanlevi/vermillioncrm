@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AiOpsAdvisorPanel } from "@/components/ceo/ai-ops-advisor-panel";
+import { RetryRunButton } from "@/components/ceo/retry-run-button";
 import {
   getAgentCostSummaries,
   getRecentAgentRuns,
@@ -217,12 +218,15 @@ export default async function AiOperationsPage() {
                     <StatusBadge status={r.status} />
                   </td>
                   <td className="px-3 py-2">
-                    <Link
-                      href={`/ceo/ai-operations/${r.id}`}
-                      className="text-[var(--accent)] hover:underline"
-                    >
-                      פירוט →
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      {r.status === "FAILED" && <RetryRunButton runId={r.id} />}
+                      <Link
+                        href={`/ceo/ai-operations/${r.id}`}
+                        className="text-[var(--accent)] hover:underline"
+                      >
+                        פירוט →
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

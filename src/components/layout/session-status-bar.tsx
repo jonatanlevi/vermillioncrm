@@ -3,6 +3,7 @@ import { getSyncStatusForUi } from "@/lib/vermillion/status";
 import { IngestionStatusDisplay } from "./ingestion-status-display";
 import { CrmAutoRefresh } from "./crm-auto-refresh";
 import { QuickSyncButton } from "./quick-sync-button";
+import { RealtimeAlertBanner } from "./realtime-alert-banner";
 
 type Props = {
   role: string;
@@ -37,6 +38,8 @@ export async function SessionStatusBar({ role, userName, userEmail }: Props) {
         initialUserCount={sync.userCount}
         initialLastSyncAt={sync.lastSyncAt?.toISOString() ?? null}
       />
+
+      <RealtimeAlertBanner />
 
       <div className="mr-auto flex flex-wrap items-center gap-2">
         <CrmAutoRefresh />
