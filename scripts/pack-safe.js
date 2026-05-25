@@ -44,6 +44,17 @@ if (!fs.existsSync(STANDALONE)) {
   process.exit(1);
 }
 
+// ── Step 0b: verify static files were copied into standalone ─────────────────
+const STANDALONE_STATIC = path.join(STANDALONE, '.next', 'static');
+const staticOk = fs.existsSync(STANDALONE_STATIC) &&
+  fs.readdirSync(STANDALONE_STATIC).some(e =>
+    ['chunks', 'css', 'media'].includes(e)
+  );
+if (!staticOk) {
+  console.error('[pack-safe] ERROR: .next/static was not copied into standalone — run `npm run build:standalone` first, not just `electron:pack`');
+  process.exit(1);
+}
+
 // ── Step 1: build win-unpacked (no NSIS, no pruning) ─────────────────────────
 console.log('\n[pack-safe] Step 1 — electron-builder --dir');
 run('npx', ['electron-builder', '--win', '--x64', '--dir']);
