@@ -33,11 +33,13 @@ type ChangePayload = {
 };
 
 let started = false;
-const channelRef: ReturnType<NonNullable<ReturnType<typeof getIngestionClient>>["channel"]> | null =
+let channelRef: ReturnType<NonNullable<ReturnType<typeof getIngestionClient>>["channel"]> | null =
   null;
 let channelStatus: "off" | "connecting" | "live" | "error" = "off";
 let lastEventAt: Date | null = null;
 let lastError: string | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
 
 const pending = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -144,6 +146,23 @@ export function ensureRealtimeSyncStarted() {
   startRealtimeSync();
 }
 
+function scheduleReconnect() {
+  if (reconnectTimer) return;
+  reconnectAttempt += 1;
+  // backoff: 5s, 10s, 20s, max 60s
+  const delayMs = Math.min(5_000 * Math.pow(2, reconnectAttempt - 1), 60_000);
+  console.info(`[realtime-sync] reconnect in ${delayMs / 1000}s (attempt ${reconnectAttempt})`);
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (channelRef) {
+      void channelRef.unsubscribe().catch(() => {});
+      channelRef = null;
+    }
+    started = false;
+    startRealtimeSync();
+  }, delayMs);
+}
+
 export function startRealtimeSync() {
   if (started) return;
   if (!realtimeEnabled()) {
@@ -166,12 +185,14 @@ export function startRealtimeSync() {
   channelStatus = "connecting";
 
   const channel = sb.channel("vermillion-crm-sync");
+  channelRef = channel;
 
   for (const table of WATCH_TABLES) {
     channel.on(
       "postgres_changes",
       { event: "*", schema: "public", table },
       (payload) => {
+        if (channelRef !== channel) return;
         handleChange({
           eventType: payload.eventType,
           new: (payload.new as Record<string, unknown>) ?? null,
@@ -182,25 +203,38 @@ export function startRealtimeSync() {
     );
   }
 
+  let stableResetTimer: ReturnType<typeof setTimeout> | null = null;
+
   channel.subscribe((status, err) => {
+    if (channelRef !== channel) return;
     if (status === "SUBSCRIBED") {
       channelStatus = "live";
       lastError = null;
       console.info("[realtime-sync] מאזין לשינויים ב-Supabase");
+      stableResetTimer = setTimeout(() => {
+        if (channelRef === channel) reconnectAttempt = 0;
+        stableResetTimer = null;
+      }, 30_000);
     } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      if (stableResetTimer) { clearTimeout(stableResetTimer); stableResetTimer = null; }
       channelStatus = "error";
       lastError = err?.message ?? status;
       console.error("[realtime-sync] channel error:", lastError);
+      scheduleReconnect();
     } else if (status === "CLOSED") {
+      if (stableResetTimer) { clearTimeout(stableResetTimer); stableResetTimer = null; }
       channelStatus = "off";
+      scheduleReconnect();
     }
   });
 
   setTimeout(() => {
+    if (channelRef !== channel) return;
     if (channelStatus === "connecting") {
       channelStatus = "error";
       lastError =
         "Realtime לא התחבר — בדשבורד Supabase: Database → Replication → הפעל Realtime לטבלאות profiles, commitment, daily_stamps וכו׳";
+      scheduleReconnect();
     }
   }, 20_000);
 }

@@ -174,6 +174,12 @@ function createWindow() {
     autoHideMenuBar: true,
   });
 
+  win.webContents.on('console-message', (e, level, msg, line, src) => {
+    log(`[renderer:${level}] ${msg} (${src}:${line})`);
+  });
+  win.webContents.on('render-process-gone', (e, details) => {
+    log(`[renderer:GONE] reason=${details.reason} exitCode=${details.exitCode}`);
+  });
   win.loadURL(`http://127.0.0.1:${PORT}`);
 }
 

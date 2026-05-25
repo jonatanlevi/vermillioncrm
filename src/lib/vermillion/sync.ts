@@ -437,10 +437,15 @@ export async function refreshAppUserFromSource(
     .maybeSingle();
 
   if (profileRes.error || !profileRes.data) {
-    await markAppUserChurnedFromSource(userId);
+    // אם קיבלנו אירוע Realtime לפני שה-profile נוצר (race condition בהרשמה) —
+    // אל תסמן כנטש; הרשמה מ-AppUserEvent תגיע בקרוב ותטפל בזה
+    const isNewUserRace = !profileRes.error && !profileRes.data;
+    if (!isNewUserRace) {
+      await markAppUserChurnedFromSource(userId);
+    }
     return {
       ok: false,
-      error: profileRes.error?.message ?? "משתמש לא נמצא במקור — סומן כנטש ב-CRM",
+      error: profileRes.error?.message ?? "פרופיל טרם נוצר — ייסנכרן בקרוב",
     };
   }
 
