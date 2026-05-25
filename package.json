@@ -18,7 +18,9 @@
     "build:electron": "npm run build:standalone && npm run electron:pack",
     "electron:pack": "node scripts/pack-safe.js",
     "electron:build:dir": "npm run build:standalone && electron-builder --win --x64 --dir",
-    "icon": "node electron/make-icon.js"
+    "icon": "node electron/make-icon.js",
+    "backup:db": "node scripts/backup-db.js",
+    "backup:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-backup.ps1"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
