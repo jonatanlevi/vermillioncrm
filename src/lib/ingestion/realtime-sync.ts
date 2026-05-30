@@ -3,7 +3,7 @@
  * דורש: Realtime מופעל על הטבלאות בדשבורד Supabase.
  */
 import { db } from "@/lib/db";
-import { getIngestionClient, isIngestionSourceConfigured } from "./app-source";
+import { getIngestionClient, isIngestionSourceConfigured, resetIngestionClient } from "./app-source";
 import {
   markAppUserChurnedFromSource,
   refreshAppUserFromSource,
@@ -62,7 +62,7 @@ function removeLocalUser(externalId: string) {
   void markAppUserChurnedFromSource(externalId);
 }
 
-function scheduleUserRefresh(userId: string) {
+function scheduleUserRefresh(userId: string, delayMs = DEBOUNCE_MS) {
   const existing = pending.get(userId);
   if (existing) clearTimeout(existing);
 
@@ -74,7 +74,10 @@ function scheduleUserRefresh(userId: string) {
         const result = await refreshAppUserFromSource(userId);
         if (!result.ok) {
           console.warn("[realtime-sync] refresh failed:", userId, result.error);
-          if (
+          if (result.error.includes("טרם נוצר")) {
+            // race condition — profile עוד לא מוכן, ננסה שנית אחרי 15s
+            scheduleUserRefresh(userId, 15_000);
+          } else if (
             result.error.includes("נטש") ||
             result.error.includes("Auth נמחק") ||
             result.error.includes("לא נמצא")
@@ -85,7 +88,7 @@ function scheduleUserRefresh(userId: string) {
       } catch (e) {
         console.warn("[realtime-sync] refresh error:", userId, e);
       }
-    }, DEBOUNCE_MS)
+    }, delayMs)
   );
 }
 
@@ -158,6 +161,8 @@ function scheduleReconnect() {
       void channelRef.unsubscribe().catch(() => {});
       channelRef = null;
     }
+    // מאפס את ה-client כדי שה-WebSocket הבא יהיה חדש לחלוטין
+    resetIngestionClient();
     started = false;
     startRealtimeSync();
   }, delayMs);
@@ -218,8 +223,12 @@ export function startRealtimeSync() {
     } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
       if (stableResetTimer) { clearTimeout(stableResetTimer); stableResetTimer = null; }
       channelStatus = "error";
-      lastError = err?.message ?? status;
-      console.error("[realtime-sync] channel error:", lastError);
+      lastError =
+        err?.message ??
+        (status === "TIMED_OUT"
+          ? "חיבור פג — מנסה שנית אוטומטית"
+          : "שגיאת ערוץ — מנסה שנית");
+      console.error("[realtime-sync] channel error:", status, lastError);
       scheduleReconnect();
     } else if (status === "CLOSED") {
       if (stableResetTimer) { clearTimeout(stableResetTimer); stableResetTimer = null; }

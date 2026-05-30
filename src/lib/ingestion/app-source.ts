@@ -36,7 +36,13 @@ export function getIngestionClient(): SupabaseClient | null {
   if (!client) {
     client = createClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
+      realtime: { timeout: 30_000 },
     });
   }
   return client;
+}
+
+/** מאפס את ה-client כדי שהחיבור הבא ייצור WebSocket חדש לחלוטין */
+export function resetIngestionClient(): void {
+  client = null;
 }
