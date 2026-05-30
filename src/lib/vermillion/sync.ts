@@ -410,9 +410,19 @@ async function filterProfilesWithActiveAuth(
   sb: NonNullable<ReturnType<typeof getIngestionClient>>,
   profiles: VermillionProfile[]
 ): Promise<VermillionProfile[]> {
+  // משתמשים חדשים (לא קיימים עדיין ב-DB מקומי) — תמיד כולל, ללא בדיקת Auth
+  const knownIds = new Set(
+    (await db.appUser.findMany({ select: { externalId: true } })).map((u) => u.externalId)
+  );
+
   const out: VermillionProfile[] = [];
   for (const p of profiles) {
-    if (await authUserExists(sb, p.id)) out.push(p);
+    if (!knownIds.has(p.id)) {
+      out.push(p); // משתמש חדש — נכלל ישירות
+    } else if (await authUserExists(sb, p.id)) {
+      out.push(p); // משתמש קיים עם Auth פעיל — נכלל
+    }
+    // משתמש קיים שנמחק Auth שלו — מסונן (נטש)
   }
   return out;
 }

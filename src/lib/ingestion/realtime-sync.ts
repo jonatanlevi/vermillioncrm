@@ -7,6 +7,7 @@ import { getIngestionClient, isIngestionSourceConfigured, resetIngestionClient }
 import {
   markAppUserChurnedFromSource,
   refreshAppUserFromSource,
+  syncAppDataFromSource,
 } from "@/lib/vermillion/sync";
 
 const DEBOUNCE_MS = 2_000;
@@ -147,6 +148,7 @@ export function getRealtimeSyncStatus() {
 export function ensureRealtimeSyncStarted() {
   if (started) return;
   startRealtimeSync();
+  startPollSync();
 }
 
 function scheduleReconnect() {
@@ -246,4 +248,28 @@ export function startRealtimeSync() {
       scheduleReconnect();
     }
   }, 20_000);
+}
+
+// פולינג גיבוי — כל 5 דקות מסנכרן נתונים גם ללא Realtime
+const POLL_INTERVAL_MS = 5 * 60 * 1000;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePoll() {
+  if (pollTimer) return;
+  pollTimer = setTimeout(async () => {
+    pollTimer = null;
+    if (isIngestionSourceConfigured()) {
+      try {
+        await syncAppDataFromSource();
+        console.info("[realtime-sync] poll sync done");
+      } catch (e) {
+        console.warn("[realtime-sync] poll sync error:", e);
+      }
+    }
+    schedulePoll();
+  }, POLL_INTERVAL_MS);
+}
+
+export function startPollSync() {
+  schedulePoll();
 }
